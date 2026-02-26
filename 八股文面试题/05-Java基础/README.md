@@ -39,6 +39,8 @@
 
 但这里有个"坑"——Java 为了省钱，提前做好了一批"常用盒子"放在仓库里复用。如果你的硬币面值在这个范围内，拿到的是同一个盒子；超出范围，就会新做一个盒子。
 
+**回到技术**："装盒"就是编译器自动调用 `Integer.valueOf()`，"拆盒"就是调用 `intValue()`。"常用盒子复用"就是 Integer 的缓存池机制——`valueOf()` 对 -128~127 范围内的值返回缓存对象，所以用 `==` 比较时结果是 true；超出范围就 new 新对象，`==` 就是 false 了。
+
 **原理详解**：
 
 装箱本质调用 `Integer.valueOf()`，拆箱本质调用 `intValue()`。
@@ -88,6 +90,8 @@ int f = e;  // 自动拆箱：e.intValue() → NullPointerException！
 - 基本类型没有"瓶子"的概念，`==` 直接比味道（值）
 - 引用类型有"瓶子"，`==` 比的是瓶子编号（内存地址），`equals()` 比的是里面的内容
 
+**回到技术**："瓶子编号"就是对象在堆内存中的地址，`==` 对引用类型比较的就是这个地址。"味道"就是对象的内容，`equals()` 默认实现和 `==` 一样比地址，但 String、Integer 等类重写了它来比较实际内容。
+
 **原理详解**：
 
 **① 基本类型**：`==` 直接比较值
@@ -134,6 +138,8 @@ public boolean equals(Object obj) {
 把 HashMap 想象成一个有很多格子的**快递柜**。你寄快递时，先根据手机尾号（hashCode）决定放哪个格子，取快递时也先找到格子，再核对身份证（equals）确认是不是你的包裹。
 
 如果两个"相同的人"（equals 相等）手机尾号不一样（hashCode 不同），那取快递时就会去错格子，永远找不到自己的包裹——这就是不重写 hashCode 的后果。
+
+**回到技术**：上面说的"格子"就是 HashMap 的数组槽位（桶），"手机尾号"就是 hashCode 对数组长度取模的结果，"核对身份证"就是调用 equals() 方法比较 key 是否相等。HashMap 先用 hashCode 定位桶，再用 equals 确认 key，两步缺一不可。
 
 **原理详解**：
 
@@ -196,6 +202,8 @@ public int hashCode() {
 - **StringBuilder** = 用铅笔写在白板上，随便擦写，但只能一个人用（线程不安全）
 - **StringBuffer** = 也是白板，但配了一把锁，同一时间只允许一个人写（线程安全，但慢）
 
+**回到技术**："石碑不能改"就是 String 内部的 `char[]`（JDK 9 后是 `byte[]`）被 `final` 修饰，任何修改操作都会创建新的 String 对象。"白板随便擦写"就是 StringBuilder/StringBuffer 内部的数组可以动态扩容和修改。"配了一把锁"就是 StringBuffer 的方法加了 `synchronized` 关键字。
+
 **原理详解**：
 
 | 特性 | String | StringBuilder | StringBuffer |
@@ -238,6 +246,8 @@ String result = sb.toString();
 **通俗理解**：
 
 String 就像人民币上的面额——印好了就不能改。为什么？因为如果能改，你把 10 块改成 100 块，所有持有这张钞票引用的人都会受影响，整个经济系统就乱了。
+
+**回到技术**："面额不能改"就是 String 内部的 `char[]` 被 `private final` 修饰，且没有暴露修改方法。"所有持有引用的人受影响"就是字符串常量池中多个引用可能指向同一个 String 对象，如果可变就会互相干扰。
 
 **原理详解**：
 
@@ -302,6 +312,8 @@ System.out.println(s2 == s3);  // true  —— 都指向常量池中的同一个
 - **抽象类**像一份"岗位说明书"——你是"程序员"这个岗位，必须会写代码（抽象方法），公司还给你配了工位和电脑（成员变量和具体方法）。但你只能属于一个岗位（单继承）
 - **接口**像一张"技能证书"——你可以同时持有"驾照""英语六级""PMP"等多张证书（多实现），每张证书只规定你要会什么技能，不管你怎么学的
 
+**回到技术**："岗位说明书"就是抽象类，它可以包含成员变量和具体方法实现，但只能单继承。"技能证书"就是接口，只定义方法签名（JDK 8 后可以有 default 方法），一个类可以实现多个接口。
+
 **原理详解**：
 
 | 对比项 | 抽象类（abstract class） | 接口（interface） |
@@ -357,6 +369,8 @@ public class Duck extends Animal implements Swimmable, Flyable {
 - **重载**像餐厅的"套餐"——同一家店（同一个类），菜名都叫"套餐"，但 A 套餐是一荤一素，B 套餐是两荤一素（参数列表不同）
 - **重写**像"子承父业"——儿子继承了父亲的饭店，菜名和规格都一样，但做法换成了自己的风格（实现不同）
 
+**回到技术**："同一家店的不同套餐"就是同一个类中方法名相同但参数列表不同，编译期就能确定调用哪个（静态分派）。"子承父业换做法"就是子类重写父类方法，运行时根据实际对象类型决定调用哪个版本（动态分派），这就是多态的基础。
+
 **原理详解**：
 
 | 对比项 | 重载（Overload） | 重写（Override） |
@@ -403,6 +417,8 @@ public class Dog extends Animal {
 你有一份简历，上面贴了一张照片：
 - **浅拷贝** = 复印简历，但照片没复印，两份简历上贴的是**同一张照片**。你在照片上画了胡子，两份简历都受影响
 - **深拷贝** = 复印简历 + 重新冲洗一张照片。两份简历完全独立，互不影响
+
+**回到技术**："简历"就是对象本身，"照片"就是对象内部的引用类型字段。浅拷贝只复制对象本身，引用字段还是指向同一个对象；深拷贝会递归复制所有引用对象，实现完全独立。
 
 **原理详解**：
 
@@ -458,6 +474,8 @@ public class Person implements Cloneable {
 - **final 类** = 绝育了，不能有后代（不能被继承）
 - **final 方法** = 祖传秘方，后代不能改配方（不能被重写）
 - **final 变量** = 刻在石头上的名字，写完就不能擦（不能重新赋值）
+
+**回到技术**："绝育不能有后代"就是 final 类不能被继承，比如 String 就是 final 的。"祖传秘方不能改"就是 final 方法不能被子类重写。"刻在石头上"就是 final 变量一旦赋值就不能再指向其他值——但要注意，如果是引用类型，引用不可变不代表对象内容不可变。
 
 **原理详解**：
 
@@ -541,6 +559,8 @@ public class Counter {
 - **受检异常（Checked Exception）** = 可预见的风险——比如开车上路可能遇到堵车（IOException），法律要求你必须买保险（必须 try-catch 或 throws）
 - **非受检异常（RuntimeException）** = 人为失误——比如闯红灯（NullPointerException）、超速（ArrayIndexOutOfBoundsException），属于代码 bug，应该修复而不是 catch
 
+**回到技术**："天灾"就是 Error，JVM 层面的严重错误，程序无法恢复。"可预见的风险"就是受检异常，编译器强制你处理（try-catch 或 throws 声明）。"人为失误"就是 RuntimeException，通常是编程错误导致的，应该通过修复代码来避免。
+
 **原理详解**：
 
 ```
@@ -616,6 +636,8 @@ public void readFile(String path) throws IOException {
 
 Spring 的依赖注入、MyBatis 的 Mapper 代理、Jackson 的 JSON 序列化……这些框架底层全靠反射。
 
+**回到技术**："闯进后厨"就是在运行时通过 `Class` 对象获取类的所有信息。"打开锅看食材"就是用 `getDeclaredFields()` 获取字段，"看做法"就是用 `getDeclaredMethods()` 获取方法，"自己动手炒一盘"就是用 `method.invoke()` 调用方法，甚至可以通过 `setAccessible(true)` 突破 private 限制。
+
 **原理详解**：
 
 **获取 Class 对象的三种方式**：
@@ -666,6 +688,8 @@ String name = (String) field.get(obj);
 **通俗理解**：
 
 泛型就像快递箱上贴的"标签"——你在箱子上贴了"只装书"（`List<Book>`），快递员（编译器）会帮你检查，不让你往里塞衣服。但箱子到了仓库（JVM 运行时），标签就被撕掉了，仓库只看到一个普通箱子（`List`）。这就是 **类型擦除（Type Erasure）**。
+
+**回到技术**："贴标签"就是在代码中声明泛型类型参数，"快递员检查"就是编译器在编译期做类型检查，防止类型不匹配。"标签被撕掉"就是类型擦除——编译后 `List<String>` 变成了 `List`，泛型信息被擦除，运行时 JVM 根本不知道你声明的是什么类型。
 
 **原理详解**：
 
@@ -775,10 +799,97 @@ public class User {
 
 ---
 
+### 19. Java 8 有哪些重要的新特性？
+
+> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+
+**一句话回答**：Java 8 最重要的新特性是 Lambda 表达式、Stream API、Optional 和函数式接口。这些特性让 Java 代码更简洁，也是日常开发中用得最多的。
+
+**通俗理解**：
+
+Java 8 之前写代码像写公文——格式多、废话多、一件小事也要写一大段。Java 8 之后像发微信——能用一句话说清楚的事，就不写一封信。
+
+比如你要从一堆简历里筛选出年龄大于 25 岁的人，排个序，取前 5 个名字：
+- **Java 8 之前**：写 for 循环、if 判断、新建列表、排序、截取……十几行代码
+- **Java 8 之后**：一行链式调用搞定
+
+**回到技术**：「发微信」就是 Lambda 表达式，用箭头函数替代匿名内部类。「一行链式调用」就是 Stream API，把集合操作变成流水线式处理。「函数式接口」就是只有一个抽象方法的接口，是 Lambda 的基础。
+
+**① Lambda 表达式**：
+
+```java
+// Java 8 之前：匿名内部类，啰嗦
+Collections.sort(list, new Comparator<String>() {
+    @Override
+    public int compare(String a, String b) {
+        return a.length() - b.length();
+    }
+});
+
+// Java 8 之后：Lambda 表达式，一行搞定
+Collections.sort(list, (a, b) -> a.length() - b.length());
+// 更简洁：方法引用
+list.sort(Comparator.comparingInt(String::length));
+```
+
+> Lambda 本质是**函数式接口（Functional Interface）**的实例。函数式接口就是只有⚡**一个抽象方法**的接口，用 `@FunctionalInterface` 标注。常用的有：
+
+| 函数式接口 | 方法 | 用途 |
+|-----------|------|------|
+| `Runnable` | `run()` | 无参无返回值 |
+| `Consumer<T>` | `accept(T)` | 消费一个值，无返回值 |
+| `Supplier<T>` | `get()` | 无参，返回一个值 |
+| `Function<T,R>` | `apply(T)` | 接收 T，返回 R |
+| `Predicate<T>` | `test(T)` | 接收 T，返回 boolean |
+
+**② Stream API**：
+
+Stream 是对集合的流水线式操作，支持过滤、映射、排序、聚合等，代码更简洁且支持并行处理。
+
+```java
+List<String> names = users.stream()
+    .filter(u -> u.getAge() > 25)       // 过滤：年龄 > 25
+    .sorted(Comparator.comparing(User::getAge))  // 排序：按年龄
+    .map(User::getName)                  // 映射：取名字
+    .limit(5)                            // 截取：前 5 个
+    .collect(Collectors.toList());       // 收集：转为 List
+```
+
+> **注意**：Stream 是⚡**惰性求值**的，中间操作（filter/map/sorted）不会立即执行，只有遇到终端操作（collect/forEach/count）才会触发计算。Stream ⚡**只能消费一次**，用过就不能再用。
+
+**③ Optional**：
+
+**Optional** 是一个容器类，用来优雅地处理可能为 null 的值，避免 NullPointerException。
+
+```java
+// 不用 Optional：到处判空，丑
+String cityName = null;
+if (user != null) {
+    Address addr = user.getAddress();
+    if (addr != null) {
+        cityName = addr.getCity();
+    }
+}
+
+// 用 Optional：链式调用，优雅
+String cityName = Optional.ofNullable(user)
+    .map(User::getAddress)
+    .map(Address::getCity)
+    .orElse("未知城市");
+```
+
+> **最佳实践**：Optional 适合做方法返回值，⚡**不要用 Optional 做字段类型或方法参数**。
+
+**🎤 面试这样答**：
+> "Java 8 最重要的特性有三个：Lambda 表达式让代码更简洁，本质是函数式接口的实例，配合方法引用可以大幅减少样板代码；Stream API 提供了集合的流水线式操作，支持 filter、map、sorted、collect 等操作，惰性求值，还支持 parallelStream 并行处理；Optional 用来优雅处理 null 值，避免 NPE。此外还有接口的 default 方法、新的日期时间 API（LocalDate/LocalDateTime）等。这些特性在日常开发中用得非常多。"
+
+---
+
 ## 面试高频程度排序（3~5 年）
 
 | 优先级 | 题目 |
 |--------|------|
+| ⭐⭐⭐⭐⭐ | Java 8 新特性（Lambda/Stream/Optional） |
 | ⭐⭐⭐⭐⭐ | == 和 equals() 的区别 |
 | ⭐⭐⭐⭐⭐ | hashCode() 和 equals() 的关系 |
 | ⭐⭐⭐⭐⭐ | String、StringBuilder、StringBuffer 的区别 |
