@@ -103,6 +103,9 @@ Mapper 接口方法 → MapperProxy（JDK 动态代理）
 
 > **生产环境建议**：一级缓存在 Spring 整合 MyBatis 时基本⚡**无效**（每次请求都是新的 SqlSession）。二级缓存在分布式环境下容易出现脏数据，一般⚡**不推荐使用**，缓存交给 Redis 等中间件处理。
 
+**🎤 面试这样答**：
+> "MyBatis 有两级缓存。一级缓存是 SqlSession 级别的，默认开启，同一个 SqlSession 内相同的查询会直接返回缓存结果。但在 Spring 中每次请求都是新的 SqlSession，所以一级缓存基本无效。二级缓存是 Mapper 级别的，需要手动开启，同一个 namespace 下的查询可以共享缓存。但二级缓存在分布式环境下容易出现脏数据，生产中一般不用，缓存交给 Redis 处理。"
+
 ---
 
 ## 三、动态 SQL

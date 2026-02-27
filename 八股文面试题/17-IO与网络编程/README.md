@@ -112,6 +112,12 @@ while (true) {
 
 **一句话回答**：Netty 是一个基于 NIO 的高性能网络通信框架，封装了 NIO 的复杂细节，提供简洁的 API。Dubbo、RocketMQ、Elasticsearch 底层都用了 Netty。
 
+**通俗理解**：
+
+Java 原生 NIO 就像给你一堆零件让你自己组装汽车——能开，但你得自己处理发动机、变速箱、刹车系统，还得解决各种奇怪的故障（epoll 空轮询 Bug）。Netty 就像直接给你一辆造好的跑车，性能强劲，开箱即用，还经过了无数次路测验证。
+
+**回到技术**："零件"就是 NIO 的 Channel、Buffer、Selector 等底层 API，直接用它们编程非常繁琐且容易出 Bug。"跑车"就是 Netty 封装后的高层 API，内置了 Reactor 线程模型、零拷贝、内存池、编解码器等能力。Dubbo、RocketMQ、ES 等中间件底层网络通信都用 Netty，说明它的稳定性和性能经过了大规模生产验证。
+
 | 为什么用 Netty | 说明 |
 |---------------|------|
 | **API 简洁** | 原生 NIO 编程复杂，Netty 大幅简化 |
@@ -119,6 +125,9 @@ while (true) {
 | **解决 NIO Bug** | 原生 NIO 有 epoll 空轮询 Bug，Netty 已修复 |
 | **协议支持丰富** | 内置 HTTP、WebSocket、自定义协议的编解码器 |
 | **社区活跃** | 大量开源项目使用，久经生产验证 |
+
+**🎤 面试这样答**：
+> "Netty 是基于 NIO 的高性能网络通信框架，封装了 NIO 的复杂细节。用 Netty 而不是原生 NIO 主要有几个原因：一是 API 简洁，原生 NIO 编程非常繁琐；二是性能强，内置 Reactor 线程模型、零拷贝、内存池等优化；三是解决了原生 NIO 的 epoll 空轮询 Bug；四是协议支持丰富，内置 HTTP、WebSocket 等编解码器。Dubbo、RocketMQ、Elasticsearch 底层网络通信都用了 Netty，说明它经过了大规模生产验证。"
 
 ---
 

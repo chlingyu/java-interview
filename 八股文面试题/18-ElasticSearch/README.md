@@ -87,7 +87,11 @@ Java   → 文档 1, 文档 2
 
 **一句话回答**：ES 的 Index 对应 MySQL 的表，Document 对应一行数据，Field 对应列，Mapping 对应表结构定义。
 
-简单说，ES 的数据组织方式和 MySQL 类似，只是叫法不同。你把 Index 当成表、Document 当成行来理解就行。
+**通俗理解**：
+
+如果你熟悉 MySQL，理解 ES 就很简单——把 MySQL 的概念"换个名字"就行。Index 就是表，Document 就是一行数据（只不过是 JSON 格式），Field 就是列，Mapping 就是建表时定义的字段类型。唯一不同的是 ES 天生支持分布式，一个 Index 可以拆成多个 Shard 分散到不同机器上。
+
+**回到技术**："换个名字"只是方便理解，底层实现完全不同。MySQL 用 B+ 树索引，ES 用倒排索引。Shard（分片）类似于 MySQL 的分表，把数据水平拆分到多个节点上，提升存储容量和查询并行度。Replica（副本）类似于 MySQL 的从库，提供高可用和读扩展。
 
 | ES 概念 | MySQL 对应 | 说明 |
 |---------|-----------|------|
@@ -99,6 +103,9 @@ Java   → 文档 1, 文档 2
 | **Replica（副本）** | 从库 | 分片的副本，提供高可用和读扩展 |
 
 > **注意**：ES 7.x 之后移除了 Type（类型）的概念，一个 Index 下只有一个默认 Type（`_doc`）。面试中如果被问到 Type，说明白这个变化就行。
+
+**🎤 面试这样答**：
+> "ES 的概念可以和 MySQL 对应来理解：Index 相当于表，Document 相当于一行数据，Field 相当于列，Mapping 相当于表结构定义。不同的是 ES 天生支持分布式，一个 Index 可以拆成多个 Shard 分布在不同节点上，每个 Shard 还可以有 Replica 副本提供高可用。另外 ES 7.x 之后移除了 Type 的概念，一个 Index 下只有一个默认的 _doc 类型。"
 
 ---
 

@@ -322,6 +322,50 @@ public class UserService {
 
 ---
 
+### 10. Spring 事务的传播行为有哪些？
+
+> ⭐⭐⭐ 常问 | 难度：⭐⭐⭐
+
+**回答**：事务传播行为定义的是"一个事务方法调用另一个事务方法时，事务怎么传递"。简单说就是：方法 A 有事务，方法 A 调了方法 B，B 是加入 A 的事务，还是自己新开一个？
+
+Spring 定义了 ⚡**7 种**传播行为，但常用的就前三种：
+
+| 传播行为 | 含义 | 通俗理解 |
+|---------|------|---------|
+| ⚡**REQUIRED**（默认） | 有事务就加入，没有就新建 | "有车搭车，没车自己开" |
+| ⚡**REQUIRES_NEW** | 不管有没有，都新建事务 | "不管你开不开车，我自己开" |
+| **NESTED** | 有事务就在里面嵌套一个子事务（savepoint） | "搭你的车，但我坐后排，出事我先下车不影响你" |
+| SUPPORTS | 有事务就加入，没有就不用事务 | "有车搭车，没车走路" |
+| NOT_SUPPORTED | 不管有没有，都不用事务 | "我就走路，不坐车" |
+| MANDATORY | 必须在事务中调用，否则抛异常 | "必须有车，没车不出门" |
+| NEVER | 必须不在事务中调用，否则抛异常 | "必须走路，有车也不坐" |
+
+```java
+@Service
+public class OrderService {
+    @Autowired
+    private LogService logService;
+
+    @Transactional // 默认 REQUIRED
+    public void createOrder() {
+        // 创建订单...
+        logService.saveLog(); // 调用另一个事务方法
+    }
+}
+
+@Service
+public class LogService {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void saveLog() {
+        // 记录日志：新开事务，即使 createOrder 回滚，日志也不会丢
+    }
+}
+```
+
+> **面试重点**：REQUIRED 和 REQUIRES_NEW 的区别。REQUIRED 是加入调用方的事务，一荣俱荣一损俱损；REQUIRES_NEW 是挂起调用方事务，自己新开一个，互不影响。典型场景：操作日志记录用 REQUIRES_NEW，即使业务回滚，日志也要保留。
+
+---
+
 ## 面试高频程度排序（3~5 年）
 
 | 优先级 | 题目 |
@@ -333,5 +377,6 @@ public class UserService {
 | ⭐⭐⭐⭐⭐ | Spring MVC 执行流程？ |
 | ⭐⭐⭐⭐⭐ | SpringBoot 自动配置原理？ |
 | ⭐⭐⭐⭐ | Spring 事务失效场景？ |
+| ⭐⭐⭐ | 事务的传播行为？ |
 | ⭐⭐⭐ | Bean 的作用域？ |
 | ⭐⭐⭐ | @Autowired 和 @Resource 的区别？ |
