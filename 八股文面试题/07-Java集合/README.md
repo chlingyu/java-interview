@@ -1,432 +1,405 @@
-# 07 - Java 集合
-
-> 覆盖 Java 集合框架核心知识：ArrayList、LinkedList、HashMap、ConcurrentHashMap 等高频面试考点。Map 部分是面试重灾区，HashMap 几乎每场必问。
+﻿# 07-Java集合
 
 ---
 
 ## 一、List
+### 1. ArrayList 和 LinkedList 的区别？什么场景用哪个？
 
-### 1. ArrayList 和 LinkedList 的区别？
-
-> ⭐⭐⭐⭐ 高频 | 难度：⭐⭐
-
-**一句话回答**：ArrayList 底层是动态数组，LinkedList 底层是双向链表。实际开发中 ArrayList 几乎全面优于 LinkedList。
-
-**通俗理解**：
-
-想象你在图书馆找书。ArrayList 就像一排编好号的书架，你说"我要第 5 本"，管理员直接走到第 5 格拿给你，超快。但如果要在中间插一本书，后面所有书都得往后挪一格。LinkedList 就像一串用绳子串起来的书，每本书上写着"下一本在哪"。要找第 5 本得从头一本本数过去，但在中间插一本只需要解开绳子重新系上。
-
-**回到技术**："编好号的书架"就是数组的连续内存空间，通过下标直接定位，O(1) 随机访问。"绳子串起来"就是链表的指针引用，插入只需改指针，但查找要遍历。不过理论归理论，实际中 ArrayList 因为内存连续、对 CPU 缓存友好，即使是中间插入也往往比 LinkedList 快。
+一句话：**ArrayList 底层是数组，查询快、增删慢；LinkedList 底层是双向链表，增删快、查询慢。** 但实际开发中 **99% 的场景用 ArrayList**。
 
 | 对比项 | ArrayList | LinkedList |
 |--------|-----------|------------|
-| 底层结构 | **动态数组** | **双向链表** |
-| 随机访问（`get(i)`） | ⚡**O(1)**，直接按下标定位 | O(n)，要从头一个个找 |
-| 尾部添加（`add(e)`） | ⚡**均摊 O(1)** | O(1) |
-| 中间插入/删除 | O(n)，要搬移后面的元素 | O(n)，找到位置后插入本身 O(1)，但找的过程是 O(n) |
-| 内存占用 | 紧凑，只存数据本身 | 每个节点额外存两个指针（前驱 + 后继），⚡**内存开销约为 ArrayList 的 3 倍** |
+| 底层结构 | `Object[]` 数组 | 双向链表（每个节点存 `prev`、`item`、`next` 三个引用） |
+| 随机访问 | **O(1)**，直接按下标算偏移量 | **O(n)**，要从头/尾一个一个遍历 |
+| 头部插入/删除 | **O(n)**，要把后面所有元素往后搬一位 | **O(1)**，改几个指针就行 |
+| 尾部插入 | **均摊 O(1)**（扩容时拷贝数组） | **O(1)** |
+| 中间插入/删除 | **O(n)**，搬元素 | **O(n)**（找到位置是 O(n)，改指针是 O(1)） |
+| 内存占用 | 紧凑，只存元素值 | 每个节点额外存两个指针引用，**占用约为 ArrayList 的 3~4 倍** |
+| 实现的接口 | `List`、`RandomAccess` | `List`、`Deque`（可以当队列/栈用） |
 
-```java
-// ArrayList：底层就是一个 Object 数组
-Object[] elementData;
+**这题面试经常挖坑：LinkedList 的「增删快」是有条件的！**
 
-// LinkedList：每个元素包装成一个 Node 节点
-private static class Node<E> {
-    E item;       // 数据
-    Node<E> next; // 后继指针
-    Node<E> prev; // 前驱指针
-}
-```
+只有在**已经定位到节点**的情况下（比如用迭代器遍历到那个位置），LinkedList 的增删才是 O(1)。如果你调用 `list.add(index, element)`，它还是要先 O(n) 遍历到那个位置，整体仍然是 O(n)。
 
-> **实际开发建议**：绝大多数场景直接用 ArrayList。LinkedList 只在"频繁在两端增删、几乎不随机访问"的场景（如实现队列/双端队列）才有优势。
+**ArrayList 的扩容机制：**
+- 默认初始容量：**10**（首次 `add` 时创建）
+- 扩容公式：**新容量 = 旧容量 + (旧容量 >> 1)**，即**扩为原来的 1.5 倍**
+- 扩容时用 `Arrays.copyOf()` 把旧数组整体拷贝到新数组，所以频繁扩容有性能损耗
+- 优化建议：预估大小时用 `new ArrayList<>(1000)` 指定初始容量
 
-**🎤 面试这样答**：
-> "ArrayList 底层是动态数组，支持 O(1) 随机访问，尾部添加均摊 O(1)，但中间插入删除需要搬移元素。LinkedList 底层是双向链表，插入删除只需改指针，但随机访问要从头遍历。理论上各有优劣，但实际开发中 ArrayList 几乎全面优于 LinkedList，因为数组内存连续，对 CPU 缓存非常友好，而 LinkedList 每个节点额外存两个指针，内存开销约是 ArrayList 的 3 倍。所以绝大多数场景直接用 ArrayList。"
+**什么时候用 LinkedList？**
 
----
+实际开发中**几乎不用 LinkedList**。因为现代 CPU 有缓存行优化（cache line），数组内存连续，**CPU 缓存命中率远高于链表**。LinkedList 的指针跳来跳去，缓存频繁失效，实测性能通常不如 ArrayList。只有在需要频繁在**头部**增删（如实现一个队列）时，LinkedList 才有优势。
 
-### 2. ArrayList 的扩容机制？
+**背诵口诀：** 数组连续查询快，链表指针增删快。实际开发用 ArrayList，LinkedList 当队列。
 
-> ⭐⭐⭐ 常问 | 难度：⭐⭐
-
-**回答**：ArrayList 底层是数组，数组满了就得"搬家"——创建一个更大的新数组，把旧数据复制过去。你可以理解为住的房子太小了，换一套大的，然后把家具全搬过去。
-
-**扩容流程**：
-
-1. 初始容量：`new ArrayList()` 时，底层数组其实是个⚡**空数组**（JDK 7+ 的懒初始化），第一次 `add` 时才扩容为 ⚡**10**
-2. 什么时候扩容：当元素个数超过当前数组长度时触发
-3. 扩容多少：新容量 = 旧容量 × ⚡**1.5**（准确说是 `oldCapacity + (oldCapacity >> 1)`，右移一位就是除以 2）
-4. 怎么搬：调用 `Arrays.copyOf()` 把旧数组数据复制到新数组
-
-```java
-// JDK 8 源码简化版
-private void grow(int minCapacity) {
-    int oldCapacity = elementData.length;
-    int newCapacity = oldCapacity + (oldCapacity >> 1); // 1.5 倍
-    elementData = Arrays.copyOf(elementData, newCapacity); // 复制到新数组
-}
-```
-
-> **面试追问**：如果你提前知道要存 1000 个元素，最好用 `new ArrayList<>(1000)` 指定初始容量，避免反复扩容复制带来的性能损耗。
-
----
+> 面试话术：「ArrayList 底层数组，随机访问 O(1)，增删要移动元素是 O(n)；LinkedList 底层双向链表，增删改指针 O(1) 但要先遍历定位。实际开发几乎都用 ArrayList，因为 CPU 缓存对数组更友好，LinkedList 只在需要频繁头部操作时考虑。」
 
 ## 二、Map
+### 2. HashMap 的底层实现原理？JDK 1.8 做了哪些优化？
 
-### 3. HashMap 的底层数据结构？
+**HashMap 底层是「数组 + 链表 + 红黑树」（JDK 1.8）。** 数组的每个位置叫一个**桶（bucket）**，通过 key 的 hash 值决定放在哪个桶里；同一个桶内的元素形成链表，链表过长时转为红黑树。
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+**存储流程（`put(key, value)` 过程）：**
+1. 计算 key 的 hash 值：`(h = key.hashCode()) ^ (h >>> 16)`（高 16 位异或低 16 位，叫**扰动函数**，让 hash 分布更均匀）
+2. 用 `hash & (n - 1)` 算出数组下标（n 是数组长度，等价于 `hash % n`，但位运算更快）
+3. 如果该位置为空，直接放入新节点
+4. 如果该位置有元素（发生**哈希冲突**）：
+   - 遍历链表，用 `equals()` 比较 key，找到相同的 key 就**覆盖**旧 value
+   - 没找到就在**链表尾部**追加新节点（JDK 1.7 是头插法，1.8 改为**尾插法**）
+5. 如果链表长度 ≥ **8** 且数组长度 ≥ **64**，链表转为**红黑树**（查不到时从 O(n) 变成 O(log n)）
+6. 如果红黑树节点 ≤ **6**，退化回链表
 
-**一句话回答**：JDK 8 的 HashMap 底层是 **数组 + 链表 + 红黑树**。
+**JDK 1.7 vs 1.8 对比：**
 
-**通俗理解**：
+| 对比项 | JDK 1.7 | JDK 1.8 |
+|--------|---------|---------|
+| 底层结构 | 数组 + 链表 | 数组 + 链表 + **红黑树** |
+| 插入方式 | **头插法**（新元素插到链表头部） | **尾插法**（新元素追加到链表尾部） |
+| 扰动函数 | 4 次位运算 + 5 次异或 | **1 次位运算 + 1 次异或**（简化了） |
+| 扩容时机 | 先判断是否需要扩容，再插入 | 先插入，再判断是否需要扩容 |
+| hash 冲突严重时 | 链表 O(n) | 链表长度 ≥ 8 转红黑树 O(log n) |
 
-把 HashMap 想象成一个"快递柜"：
-- **数组** = 快递柜的格子，一共有若干个编号（默认 ⚡**16** 个）
-- **链表** = 如果两个快递被分到同一个格子（哈希冲突），就在这个格子后面排队挂着
-- **红黑树** = 如果某个格子后面排的队太长了（⚡**≥ 8 个**），就把队列升级成一棵"查找树"，找东西更快
+**为什么 1.8 改为尾插法？** 因为头插法在多线程扩容时会导致**链表成环**，造成 `get()` 死循环。尾插法不会。（后面第 3 题详细说）
 
-**回到技术**：上面说的"格子编号"就是 key 的 hashCode 对数组长度取模的结果，决定元素放在哪个位置。"排队"就是链表解决哈希冲突。"升级成查找树"就是链表转红黑树——链表查找是 O(n)，红黑树是 O(log n)，当冲突严重时性能差距很大。
+**背诵口诀：** 一个数组一堆桶，hash 取模定位桶，冲突了就挂链表，链太长转红黑树。七头八尾是关键。
 
-**原理详解**：
+> 面试话术：「HashMap 底层是数组+链表+红黑树。put 时先算 key 的 hash 值，通过扰动函数让高低位都参与计算，再用 hash & (n-1) 定位桶。冲突时用链表，链表长度超过 8 且数组长度超过 64 时转红黑树。JDK 1.8 的主要优化是引入红黑树、改头插法为尾插法、简化了扰动函数。」
 
-```
-HashMap 底层结构（JDK 8）
+### 3. HashMap 为什么线程不安全？会出现什么问题？
 
-数组（Node[] table）
-┌───┬───┬───┬───┬───┬───┬───┬───┐
-│ 0 │ 1 │ 2 │ 3 │ 4 │ 5 │ 6 │ 7 │ ...
-└─┬─┴───┴─┬─┴───┴───┴─┬─┴───┴───┘
-  │       │           │
-  ▼       ▼           ▼
-[K1,V1] [K3,V3]    [K5,V5]      ← 链表节点
-  │                   │
-  ▼                   ▼
-[K2,V2]            [K6,V6]
-                      │
-                      ▼
-                   [K7,V7]
-                      │  （链表长度 ≥ 8 且数组长度 ≥ 64 → 转红黑树）
-                      ▼
-                   🌳 红黑树
-```
+**HashMap 没有加任何同步机制，多线程并发操作时会出现数据丢失、死循环、数据覆盖等问题。**
 
-**关键数字**：
+**具体有三类问题：**
 
-| 参数 | 值 | 含义 |
+**① JDK 1.7：扩容时链表成环 → `get()` 死循环**
+
+JDK 1.7 扩容时用**头插法**转移链表节点。假设链表是 A → B，两个线程同时扩容：
+- 线程 1 暂停在中间状态
+- 线程 2 完成扩容，头插法把链表变成 B → A
+- 线程 1 恢复后继续用旧的指针操作，结果形成 A → B → A 的环
+- 后续 `get()` 遍历到这个桶就会**死循环，CPU 飙到 100%**
+
+JDK 1.8 改为**尾插法**解决了成环问题，但仍然不安全。
+
+**② JDK 1.8：并发 `put` 导致数据覆盖**
+
+两个线程同时 `put`，hash 到同一个桶且桶为空：
+1. 线程 1 判断桶为空，准备写入，但还没写就被挂起
+2. 线程 2 也判断桶为空，写入成功
+3. 线程 1 恢复后直接写入，**覆盖了线程 2 的数据**
+
+**③ `size()` 不准确**
+
+`HashMap` 的 `size` 字段用普通 `int`（不是 `volatile`），并发 `put` 时多个线程同时 `size++`，最终 `size` 可能比实际元素数少。
+
+**怎么解决？**
+
+| 方案 | 说明 |
+|------|------|
+| `ConcurrentHashMap` | **首选**，分段锁（1.7）/ CAS + synchronized（1.8），性能最好 |
+| `Collections.synchronizedMap()` | 把整个 map 用一把大锁包起来，简单粗暴但性能差 |
+| `Hashtable` | 所有方法加 `synchronized`，性能最差，**已过时不推荐** |
+
+**背诵口诀：** 七成环八覆盖，线程安全用 Concurrent。
+
+> 面试话术：「HashMap 线程不安全。JDK 1.7 扩容时头插法会导致链表成环，get 死循环；1.8 虽然改成尾插法避免了成环，但并发 put 仍然可能数据覆盖。多线程环境应该用 ConcurrentHashMap。」
+
+### 4. HashMap 的扩容机制？为什么容量是 2 的幂次？
+
+**当元素数量超过 `容量 × 负载因子`（默认 16 × 0.75 = 12）时，HashMap 触发扩容，容量翻倍为原来的 2 倍。**
+
+**扩容流程（JDK 1.8 `resize()` 方法）：**
+1. 创建一个**容量为原来 2 倍**的新数组
+2. 遍历旧数组的每个桶，把每个节点重新分配到新数组中
+3. 重新定位的规则：对于旧数组中下标为 `i` 的桶里的每个节点——
+   - 如果 `hash & oldCap == 0`，留在**原位置 i**
+   - 如果 `hash & oldCap != 0`，移到**新位置 i + oldCap**
+
+这个巧妙设计意味着扩容时**不需要重新计算 hash**，只需要看一位二进制就能判断新位置，效率很高。
+
+**为什么容量必须是 2 的幂次？**
+
+核心原因是：**只有容量为 2 的幂时，`hash & (n - 1)` 才等价于 `hash % n`。**
+
+- 2 的幂减 1 后二进制全是 1（如 16 - 1 = 15 = `1111`）
+- `hash & 1111` 就是取 hash 的低 4 位，结果均匀分布在 0~15
+- 如果容量不是 2 的幂，比如 15 - 1 = 14 = `1110`，最低位永远是 0，所有奇数下标都不会被用到，**冲突率翻倍**
+
+**默认参数：**
+
+| 参数 | 值 | 说明 |
 |------|-----|------|
-| 默认初始容量 | ⚡**16** | 数组初始长度，必须是 2 的幂 |
-| 默认负载因子 | ⚡**0.75** | 元素个数达到容量 × 0.75 时触发扩容 |
-| 树化阈值 | ⚡**8** | 链表长度 ≥ 8 时**可能**转红黑树 |
-| 树化最小容量 | ⚡**64** | 数组长度 ≥ 64 时才真正树化，否则优先扩容 |
-| 退化阈值 | ⚡**6** | 红黑树节点 ≤ 6 时退化回链表 |
+| 默认初始容量 | **16** | `1 << 4` |
+| 默认负载因子 | **0.75** | 空间与时间的折中：太小浪费空间，太大冲突多、链表长 |
+| 扩容阈值 | 容量 × 负载因子 | 默认 16 × 0.75 = 12，超过 12 个元素就扩容 |
+| 链表转红黑树 | 链表长度 ≥ **8** 且数组长度 ≥ **64** | 否则优先扩容而不是树化 |
+| 红黑树退化链表 | 节点 ≤ **6** | 小于等于 6 转回链表 |
 
-> **为什么树化阈值是 8？** 根据泊松分布，在负载因子 0.75 的情况下，一个桶中出现 8 个元素的概率只有 ⚡**0.00000006**（千万分之六），属于极端情况。选 8 是在时间和空间之间的平衡——红黑树节点占用的内存是链表节点的 ⚡**2 倍**，不值得在短链表上用。
+**这题面试经常挖坑：为什么负载因子是 0.75？**
 
-**🎤 面试这样答**：
-> "JDK 8 的 HashMap 底层是数组加链表加红黑树。默认数组长度 16，负载因子 0.75。put 时通过 key 的 hashCode 计算数组下标，如果发生哈希冲突就用链表串起来。当链表长度达到 8 且数组长度达到 64 时，链表会转成红黑树，把查找时间从 O(n) 优化到 O(log n)。当红黑树节点减少到 6 个时会退化回链表。"
+0.75 是数学上在**时间和空间之间的最佳折中**。负载因子越大，空间利用率越高但冲突越多（查询变慢）；越小，冲突少但浪费空间。0.75 在泊松分布下使得**桶中出现 8 个及以上节点的概率不到千万分之一**，所以 8 作为树化阈值也是配套设计的。
 
----
+**背诵口诀：** 超过阈值就翻倍，与运算定下标，2 的幂减一全是 1，分布均匀少冲突。
 
-### 4. HashMap 的 put 流程？
+> 面试话术：「HashMap 容量超过阈值（容量 × 0.75）时扩容为 2 倍。容量必须是 2 的幂次，这样 hash & (n-1) 等价于取模但更快，且分布均匀。JDK 1.8 扩容时只需看 hash 的多出来的一位就能判断新位置，不需要重新计算 hash。」
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+### 5. ConcurrentHashMap 的实现原理？JDK 1.7 和 1.8 有什么区别？
 
-**一句话回答**：计算 key 的哈希值定位数组下标，如果为空直接放入，不为空则判断 key 是否相同——相同就覆盖，不同就挂到链表或红黑树上，最后检查是否需要扩容。
+**ConcurrentHashMap 是线程安全的 HashMap，核心思想是「减小锁粒度」。** JDK 1.7 用分段锁，1.8 用 CAS + synchronized 锁单个桶。
 
-**通俗理解**：
-
-你去图书馆还书，流程是这样的：
-1. 先看书的分类号，确定放哪个书架（**计算哈希值，定位数组下标**）
-2. 走到书架前，发现架子是空的 → 直接放上去（**桶为空，直接插入**）
-3. 架子上有书 → 看看是不是同一本书的新版本（**key 相同，覆盖旧值**）
-4. 不是同一本 → 在这个架子上往后排（**挂到链表尾部或插入红黑树**）
-5. 还完书后，管理员检查图书馆是不是太满了，满了就搬到更大的馆（**检查是否需要扩容**）
-
-**回到技术**："分类号"就是 key 的 hash 值对数组长度取模。"同一本书"就是 key 的 `equals()` 返回 true。"往后排"在 JDK 8 中是**尾插法**（JDK 7 是头插法，多线程下会导致死循环）。
-
-**原理详解**：
+**JDK 1.7 实现：Segment 分段锁**
 
 ```
-HashMap.put(key, value) 完整流程
-
-① hash = hash(key)  // 扰动函数：hashCode 高16位异或低16位
-        ↓
-② table 为空？──是──→ resize() 初始化数组
-        ↓ 否
-③ table[i] 为空？──是──→ 直接放入新节点
-        ↓ 否
-④ table[i].key == key？──是──→ 覆盖旧值，返回旧 value
-        ↓ 否
-⑤ 节点是红黑树？──是──→ 调用树的插入方法
-        ↓ 否
-⑥ 遍历链表：
-   - 找到相同 key → 覆盖
-   - 到达尾部 → 尾插新节点
-   - 插入后链表长度 ≥ 8 → treeifyBin()（数组 ≥ 64 才真正树化）
-        ↓
-⑦ ++size > threshold？──是──→ resize() 扩容
+ConcurrentHashMap
+├── Segment[0] → HashEntry[] → 链表
+├── Segment[1] → HashEntry[] → 链表
+├── ...
+└── Segment[15] → HashEntry[] → 链表
 ```
 
-**扰动函数**——面试常追问"为什么要高低位异或"：
+- 数据分成 **16 个 Segment**（默认），每个 Segment 继承 `ReentrantLock`，**相当于 16 把独立的锁**
+- 不同 Segment 的操作可以**并行**，最大并发度 = Segment 个数 = **16**
+- 同一个 Segment 内的操作需要**竞争同一把锁**
+- 每个 Segment 内部是一个小型 HashMap（数组 + 链表）
+
+**JDK 1.8 实现：CAS + synchronized 锁桶头节点**
+
+- 取消了 Segment，回归到和 HashMap 一样的**数组 + 链表 + 红黑树**结构
+- 锁的粒度更细：**只锁数组中的某一个桶（头节点）**，不同桶的操作完全并行
+- 空桶插入用 **CAS**（无锁操作），有冲突时才用 **synchronized** 锁住头节点
+- `size()` 用 `baseCount + CounterCell[]` 分散累加，类似 `LongAdder` 的思想，避免所有线程竞争同一个计数器
+
+**JDK 1.7 vs 1.8 对比：**
+
+| 对比项 | JDK 1.7 | JDK 1.8 |
+|--------|---------|---------|
+| 数据结构 | Segment[] + HashEntry[] + 链表 | Node[] + 链表 + 红黑树 |
+| 锁机制 | Segment 分段锁（`ReentrantLock`） | CAS + `synchronized`（锁桶头节点） |
+| 锁粒度 | 锁一个 Segment（含多个桶） | **锁一个桶**（更细） |
+| 最大并发度 | Segment 个数（默认 16） | **数组长度**（可以很大） |
+| 查询复杂度 | O(n)（链表） | O(log n)（红黑树） |
+
+**常见追问：ConcurrentHashMap 的 key 和 value 能不能为 null？**
+
+**都不能。** `HashMap` 允许一个 null key 和多个 null value，但 `ConcurrentHashMap` 的 key 和 value 都**不允许 null**，否则抛 `NullPointerException`。原因是多线程下 `get(key)` 返回 null 时，你分不清到底是「key 不存在」还是「value 本身就是 null」，这会导致二义性。
+
+**背诵口诀：** 七段八桶，七分段锁八锁头，CAS 加 synchronized，不允许 null。
+
+> 面试话术：「ConcurrentHashMap 在 JDK 1.7 用 Segment 分段锁，默认 16 段，并发度有限；1.8 改用 CAS + synchronized 锁单个桶头节点，并发度等于数组长度，大幅提升。同时 1.8 引入了红黑树，查询从 O(n) 优化到 O(log n)。注意 key 和 value 都不能为 null。」
+
+### 6. LinkedHashMap 和 TreeMap 的区别和使用场景？
+
+一句话：**LinkedHashMap 按插入或访问顺序排列，TreeMap 按 key 的大小排序。**
+
+| 对比项 | LinkedHashMap | TreeMap |
+|--------|--------------|---------|
+| 底层结构 | HashMap + **双向链表** | **红黑树** |
+| 排序方式 | **插入顺序**（默认）或**访问顺序** | 按 key 的**自然顺序**或自定义 `Comparator` |
+| 查询性能 | **O(1)**（继承 HashMap） | **O(log n)**（红黑树） |
+| null key | 允许一个 | **不允许**（需要比较大小，null 无法比较） |
+| 线程安全 | 不安全 | 不安全 |
+
+**LinkedHashMap 的「访问顺序」模式：**
+
+构造时传 `accessOrder = true`，每次 `get()` 或 `put()` 访问一个节点，会把它**移到链表尾部**。这个特性天然适合实现 **LRU 缓存**（最近最少使用）：
 
 ```java
-// JDK 8 的 hash() 方法
-static final int hash(Object key) {
-    int h;
-    // key 为 null 放在下标 0 的位置
-    // 否则：hashCode 的高 16 位和低 16 位做异或
-    return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
-}
-```
-
-> 为什么要这样做？因为数组长度通常不大（比如 16），取模时只用到了 hashCode 的低几位，高位信息被浪费了。高低位异或让高位也参与运算，**减少哈希冲突**。
-
-**🎤 面试这样答**：
-> "HashMap 的 put 流程：首先对 key 做 hash 扰动，高 16 位异或低 16 位减少冲突。然后用 hash & (n-1) 定位数组下标。如果桶为空直接插入；不为空就判断 key 是否相同，相同则覆盖。不同的话，如果是红黑树就走树的插入，否则遍历链表尾插。插入后如果链表长度达到 8 且数组长度达到 64 就树化。最后判断元素总数是否超过阈值，超过就扩容。JDK 8 改用尾插法，解决了 JDK 7 头插法在多线程下的死循环问题。"
-
----
-
-### 5. HashMap 的扩容机制？
-
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐⭐
-
-**一句话回答**：当元素个数超过 容量 × 负载因子 时，数组扩大为原来的 ⚡**2 倍**，所有元素重新计算位置。
-
-**通俗理解**：
-
-还是快递柜的例子。一开始有 16 个格子，每个格子最多挂几个快递。当快递总数超过 12 个（16 × 0.75）时，快递柜太挤了，换一个 32 格的新柜子，然后把所有快递按新的编号规则重新分配到新格子里。
-
-**回到技术**："换新柜子"就是创建一个 2 倍大小的新数组。"重新分配"就是 **rehash（重新哈希）**——每个元素要重新计算在新数组中的位置。
-
-**原理详解**：
-
-**扩容触发条件**：`size > capacity × loadFactor`（默认就是 `size > 16 × 0.75 = 12`）
-
-**JDK 8 的巧妙优化**——不需要重新算 hash：
-
-扩容后数组长度翻倍（比如 16 → 32），每个元素在新数组中的位置只有两种可能：
-- **原位置**（下标不变）
-- **原位置 + 旧容量**（比如原来在下标 5，扩容后要么还在 5，要么在 5 + 16 = 21）
-
-怎么判断？只需要看 hash 值新增的那一位是 0 还是 1：
-
-```
-旧容量 16 = 0001 0000，扩容后 32 = 0010 0000
-
-hash 值:  xxxx xxxx xxxx xxxx
-                          ↑ 看这一位（第 5 位）
-                          0 → 留在原位置
-                          1 → 原位置 + 16
-```
-
-> 这个设计非常巧妙：不需要像 JDK 7 那样重新计算每个元素的 hash，只需要看一个 bit 位，⚡**用位运算代替取模**，效率极高。而且扩容后链表的顺序不会反转，避免了 JDK 7 中多线程扩容导致的链表死循环。
-
-**🎤 面试这样答**：
-> "HashMap 在元素个数超过容量乘以负载因子时扩容，新容量是旧容量的 2 倍。JDK 8 的扩容做了优化，不需要重新计算 hash，只需要看 hash 值新增的那一位是 0 还是 1，就能判断元素在新数组中是留在原位还是移到原位置加旧容量的位置。这也是为什么 HashMap 的容量必须是 2 的幂——这样才能用位运算代替取模，同时让扩容时的元素迁移更高效。"
-
----
-
-### 6. HashMap 为什么线程不安全？
-
-> ⭐⭐⭐⭐ 高频 | 难度：⭐⭐⭐
-
-**一句话回答**：HashMap 的 put 和扩容操作没有加锁，多线程并发时会导致数据覆盖丢失，JDK 7 中还会出现链表死循环。
-
-**通俗理解**：
-
-两个人同时往同一个格子里放快递，一个人放的时候另一个人也在放，结果一个人的快递被另一个人的盖住了——快递丢了。
-
-**回到技术**：HashMap 的所有操作都没有同步机制，多线程并发时主要有以下问题：
-
-**① JDK 8：数据覆盖**
-
-两个线程同时 put，hash 到同一个桶，都判断桶为空，然后各自插入——后插入的覆盖先插入的，**数据丢失**。
-
-```java
-// 两个线程同时执行到这一行，都发现 table[i] == null
-if ((p = tab[i = (n - 1) & hash]) == null)
-    tab[i] = newNode(hash, key, value, null);
-// 线程 A 写入后，线程 B 紧接着写入，A 的数据被覆盖
-```
-
-**② JDK 7：链表死循环（经典面试题）**
-
-JDK 7 扩容时用**头插法**迁移链表，多线程同时扩容会导致链表形成环，之后 `get()` 操作会陷入死循环，CPU 飙到 100%。
-
-> JDK 8 改用**尾插法**，解决了死循环问题，但数据覆盖问题依然存在。所以多线程场景必须用 `ConcurrentHashMap`。
-
-**🎤 面试这样答**：
-> "HashMap 线程不安全主要体现在两方面。JDK 7 中扩容用头插法，多线程并发扩容会导致链表成环，get 时死循环。JDK 8 改成了尾插法解决了死循环，但多线程同时 put 仍然会出现数据覆盖丢失的问题，因为 put 操作没有任何同步措施。多线程场景应该用 ConcurrentHashMap。"
-
----
-
-### 7. ConcurrentHashMap 如何保证线程安全？
-
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐⭐
-
-**一句话回答**：JDK 7 用分段锁（Segment），JDK 8 改为 CAS + synchronized 锁单个桶，粒度更细、并发度更高。
-
-**通俗理解**：
-
-还是快递柜的场景，现在要解决"两个人同时放快递导致丢件"的问题：
-- **JDK 7 的方案**（分段锁）= 把快递柜分成 ⚡**16 段**，每段有一把锁。你放第 3 段的快递时，别人还能同时放第 7 段的，互不影响。但同一段内只能一个人操作
-- **JDK 8 的方案**（CAS + synchronized）= 不分段了，直接锁单个格子。你放第 3 格时，只锁第 3 格，其他所有格子都能同时操作。粒度从"一段"细化到"一格"
-
-**回到技术**："一段"就是 JDK 7 的 **Segment（分段，本质是一个小的 HashMap）**，默认 16 个 Segment，并发度就是 16。"一格"就是 JDK 8 中数组的一个桶（Node），用 **synchronized 锁住链表/红黑树的头节点**，只要不是同一个桶，就能完全并行。
-
-**原理详解**：
-
-**JDK 7：Segment 分段锁**
-
-```
-ConcurrentHashMap（JDK 7）
-
-Segment[] 数组（默认 16 个段，每段一把 ReentrantLock）
-┌──────────┬──────────┬──────────┬──────────┐
-│ Segment0 │ Segment1 │ Segment2 │   ...    │
-│  🔒锁     │  🔒锁     │  🔒锁     │          │
-│ ┌──┬──┐  │ ┌──┬──┐  │ ┌──┬──┐  │          │
-│ │  │  │  │ │  │  │  │ │  │  │  │          │
-│ └──┴──┘  │ └──┴──┘  │ └──┴──┘  │          │
-│ 小HashMap │ 小HashMap │ 小HashMap │          │
-└──────────┴──────────┴──────────┴──────────┘
-```
-
-- 每个 Segment 继承 `ReentrantLock`，自带锁功能
-- put 时先定位到 Segment，再锁住这个 Segment 操作
-- 缺点：并发度固定为 ⚡**16**，初始化后不能改；数据结构是数组 + 链表，没有红黑树
-
-**JDK 8：CAS + synchronized（重点掌握）**
-
-```java
-// JDK 8 的 put 核心逻辑（简化版）
-final V putVal(K key, V value) {
-    // ① 计算 hash
-    int hash = spread(key.hashCode());
-    for (Node<K,V>[] tab = table;;) {
-        Node<K,V> f;
-        // ② 桶为空 → 用 CAS 无锁插入
-        if ((f = tab[i]) == null) {
-            if (casTabAt(tab, i, null, new Node<>(hash, key, value)))
-                break;  // CAS 成功，插入完毕
-        }
-        // ③ 桶不为空 → synchronized 锁住头节点
-        else {
-            synchronized (f) {
-                // 链表或红黑树的插入逻辑（和 HashMap 类似）
-            }
-        }
+// 简易 LRU 缓存：容量超过 100 时淘汰最早访问的
+LinkedHashMap<String, Object> lru = new LinkedHashMap<>(16, 0.75f, true) {
+    @Override
+    protected boolean removeEldestEntry(Map.Entry eldest) {
+        return size() > 100; // 超过 100 就删最老的
     }
-    // ④ 用 addCount() 统计元素个数（也是 CAS）
-}
+};
 ```
 
-| 对比 | JDK 7 | JDK 8 |
-|------|-------|-------|
-| 锁的粒度 | 锁一个 Segment（一段） | 锁一个桶的头节点（一格） |
-| 锁的实现 | `ReentrantLock` | `synchronized`（JDK 8 优化后性能不输 ReentrantLock） |
-| 数据结构 | 数组 + 链表 | 数组 + 链表 + 红黑树 |
-| 并发度 | 固定 ⚡**16** | 等于数组长度，**动态扩展** |
+**TreeMap 的使用场景：**
+- 需要按 key 排序输出（如排行榜、按时间排序的事件）
+- 需要范围查询：`subMap(fromKey, toKey)`、`headMap(toKey)`、`tailMap(fromKey)`
+- 需要取最大/最小 key：`firstKey()`、`lastKey()`
 
-**🎤 面试这样答**：
-> "ConcurrentHashMap 在 JDK 7 中用分段锁实现，把数据分成 16 个 Segment，每个 Segment 一把 ReentrantLock，不同段之间可以并发操作。JDK 8 做了重大改进，废弃了分段锁，改用 CAS 加 synchronized。put 时如果桶为空就用 CAS 无锁插入，桶不为空就用 synchronized 锁住头节点再操作。锁粒度从段级别细化到桶级别，并发度等于数组长度，而且引入了红黑树优化长链表的查询性能。"
+**背诵口诀：** Linked 记顺序能做 LRU，Tree 排大小能做范围查。
 
----
+> 面试话术：「LinkedHashMap 在 HashMap 基础上加了双向链表维护顺序，支持插入顺序和访问顺序，访问顺序模式可以用来实现 LRU 缓存。TreeMap 底层是红黑树，按 key 排序，适合需要范围查询的场景。」
 
-### 8. HashMap 和 Hashtable 的区别？
+## 三、Set
+### 7. HashSet 的实现原理？如何保证元素不重复？
 
-> ⭐⭐⭐ 常问 | 难度：⭐⭐
-
-**回答**：简单说，Hashtable 是"上古时代"的线程安全 Map，用 synchronized 锁整个表，性能很差。现在基本没人用了，多线程场景直接用 ConcurrentHashMap。
-
-| 对比项 | HashMap | Hashtable |
-|--------|---------|-----------|
-| 线程安全 | ❌ 不安全 | ✅ 安全（synchronized 锁整个方法） |
-| 性能 | 快 | ⚡**慢很多**，每次操作都要获取锁 |
-| null 值 | key 和 value 都⚡**允许 null** | key 和 value 都⚡**不允许 null** |
-| 初始容量 | ⚡**16** | ⚡**11** |
-| 扩容方式 | 2 倍 | 2 倍 + 1 |
-| 继承关系 | 继承 AbstractMap | 继承 Dictionary（已过时） |
-
-> **面试追问**：为什么 ConcurrentHashMap 也不允许 null key/value？因为多线程环境下，`get(key)` 返回 null 时无法区分是"key 不存在"还是"value 就是 null"，会产生二义性。HashMap 单线程下可以用 `containsKey()` 再判断一次，但并发环境下两次调用之间状态可能已经变了。
-
----
-
-## 三、Set & 通用
-
-### 9. HashSet 的实现原理？
-
-> ⭐⭐⭐ 常问 | 难度：⭐⭐
-
-**回答**：HashSet 底层就是一个 HashMap，元素存在 HashMap 的 key 里，value 统一用一个固定的空对象占位。你可以理解为 HashSet 就是"只用了 key 的 HashMap"。
+**HashSet 底层就是一个 HashMap，元素作为 key 存，value 统一用一个固定的 `PRESENT` 对象占位。** 所以 HashSet 的去重逻辑完全复用了 HashMap 的 key 去重机制。
 
 ```java
-// HashSet 源码（极度简化）
+// HashSet 源码核心（HotSpot JDK 8）
 public class HashSet<E> {
     private transient HashMap<E, Object> map;
-
-    // 所有 value 都指向同一个空对象，纯占位用
-    private static final Object PRESENT = new Object();
+    private static final Object PRESENT = new Object(); // 所有 value 都是这个
 
     public boolean add(E e) {
-        return map.put(e, PRESENT) == null; // 利用 HashMap 的 key 不重复特性
-    }
-
-    public boolean contains(Object o) {
-        return map.containsKey(o); // 直接查 HashMap 的 key
+        return map.put(e, PRESENT) == null; // 如果 key 已存在，put 返回旧 value，不为 null → 返回 false
     }
 }
 ```
 
-> 所以 HashSet 的去重原理和 HashMap 判断 key 相同的逻辑一样：先比 `hashCode()`，再比 `equals()`。自定义对象放进 HashSet 时，必须同时重写这两个方法。
+**如何保证不重复？** 和 HashMap 判断 key 是否相同的逻辑一样：
 
----
+1. 先比 **`hashCode()`**：hash 值不同 → 一定不同，放进去
+2. hash 值相同 → 再比 **`equals()`**：equals 为 true → 重复，不放；equals 为 false → 不重复，挂链表
 
-### 10. fail-fast 和 fail-safe 机制？
+所以自定义对象放 HashSet 时，**必须同时重写 `hashCode()` 和 `equals()`**，否则「内容相同」的两个对象会被当成不同元素。
 
-> ⭐⭐ 了解 | 难度：⭐⭐
+**这题面试经常挖坑：只重写 equals 不重写 hashCode 会怎样？**
 
-**回答**：简单说，fail-fast 是"一发现有人偷偷改了集合就立刻报错"，fail-safe 是"改了也没关系，我操作的是副本"。
+两个内容相同的对象可能 hashCode 不同，落到**不同的桶**，HashMap 连 equals 都不会调，直接当成不同 key 放进去了。结果 HashSet 里出现两个「相同」的元素。
 
-| 对比项 | fail-fast（快速失败） | fail-safe（安全失败） |
-|--------|----------------------|----------------------|
-| 代表集合 | `ArrayList`、`HashMap` | `CopyOnWriteArrayList`、`ConcurrentHashMap` |
-| 遍历时修改 | 抛 ⚡`ConcurrentModificationException` | 不报错，但可能读不到最新数据 |
-| 原理 | 内部维护 `modCount`，遍历时发现被改了就抛异常 | 操作的是数据的快照或副本 |
-| 适用场景 | 单线程，及时发现 bug | 多线程并发读写 |
+**常见的 Set 实现对比：**
+
+| Set 实现 | 底层 | 是否有序 | 线程安全 |
+|----------|------|----------|----------|
+| `HashSet` | HashMap | **无序** | 不安全 |
+| `LinkedHashSet` | LinkedHashMap | **插入顺序** | 不安全 |
+| `TreeSet` | TreeMap（红黑树） | **按元素大小排序** | 不安全 |
+
+**背诵口诀：** HashSet 就是 HashMap 的 key，去重靠 hashCode + equals 两兄弟。
+
+> 面试话术：「HashSet 底层是 HashMap，元素作为 key，value 用一个固定对象占位。去重靠 hashCode 定位桶 + equals 判重。自定义对象必须同时重写 hashCode 和 equals，否则去重失效。」
+
+## 四、并发与安全
+### 8. fail-fast 和 fail-safe 是什么？
+
+**fail-fast 是一发现并发修改就立即抛异常；fail-safe 是在副本上遍历，不会抛异常。**
+
+| 对比项 | fail-fast | fail-safe |
+|--------|-----------|-----------|
+| 含义 | 遍历时如果集合被修改，**立即抛 `ConcurrentModificationException`** | 遍历时在**副本**上操作，不受原集合修改影响 |
+| 原理 | 通过 `modCount` 计数器检测：迭代器创建时记录 modCount，每次 `next()` 检查是否变了 | 创建迭代器时拷贝底层数组，遍历的是快照 |
+| 典型集合 | `ArrayList`、`HashMap`、`HashSet` 等 `java.util` 包下的集合 | `CopyOnWriteArrayList`、`ConcurrentHashMap` 等 `java.util.concurrent` 包下的集合 |
+| 优点 | 快速暴露 bug，防止不可预期的行为 | 遍历安全，不会抛异常 |
+| 缺点 | 遍历时不能修改（除了 `iterator.remove()`） | 内存开销大（拷贝），遍历的不是最新数据 |
+
+**实际场景：**
 
 ```java
-// fail-fast 示例：遍历 ArrayList 时删除元素会报错
+// ❌ fail-fast：边遍历边删除会抛异常
 List<String> list = new ArrayList<>(Arrays.asList("a", "b", "c"));
 for (String s : list) {
-    if ("b".equals(s)) {
-        list.remove(s); // 💥 ConcurrentModificationException
-    }
+    if ("b".equals(s)) list.remove(s); // 抛 ConcurrentModificationException
 }
 
-// 正确做法：用 Iterator 的 remove 方法
+// ✅ 正确做法：用迭代器的 remove()
 Iterator<String> it = list.iterator();
 while (it.hasNext()) {
-    if ("b".equals(it.next())) {
-        it.remove(); // ✅ 安全删除
-    }
+    if ("b".equals(it.next())) it.remove(); // 安全
 }
 ```
 
----
+**ConcurrentHashMap 的迭代器是弱一致性的：** 它既不拷贝也不抛异常，而是**直接遍历底层数组**，能看到遍历开始后的部分修改，但不保证看到所有修改。严格来说不算 fail-safe，而是**弱一致（weakly consistent）**。
 
-## 面试高频程度排序（3~5 年）
+**背诵口诀：** fast 抛异常保安全，safe 拷副本不报错。foreach 里别 remove，要删用迭代器。
 
+> 面试话术：「fail-fast 通过 modCount 检测并发修改，一旦发现就抛 ConcurrentModificationException，ArrayList、HashMap 都是这种机制。fail-safe 在副本上遍历，CopyOnWriteArrayList 是典型代表。ConcurrentHashMap 的迭代器是弱一致性的，不抛异常但也不保证看到所有最新修改。」
+
+### 9. 如何实现一个线程安全的 List？
+
+**三种方式：`Vector`（不推荐）、`Collections.synchronizedList()`（简单场景）、`CopyOnWriteArrayList`（读多写少场景首选）。**
+
+| 方案 | 锁机制 | 性能 | 适用场景 |
+|------|--------|------|----------|
+| `Vector` | 所有方法加 `synchronized` | **最差**，每个操作都加锁 | **已过时，不推荐** |
+| `Collections.synchronizedList()` | 用一把 `mutex` 锁包装所有方法 | 一般，全局一把锁 | 临时需要线程安全的简单场景 |
+| `CopyOnWriteArrayList` | **写时复制**（COW）：写的时候复制整个数组，读不加锁 | **读极快（无锁），写慢（拷贝数组）** | **读多写少**，如监听器列表、配置缓存 |
+
+**CopyOnWriteArrayList 的底层原理：**
+
+```java
+// HotSpot JDK 8 源码核心
+public boolean add(E e) {
+    final ReentrantLock lock = this.lock;
+    lock.lock(); // 写操作加锁
+    try {
+        Object[] elements = getArray();
+        Object[] newElements = Arrays.copyOf(elements, len + 1); // 复制一份新数组
+        newElements[len] = e; // 在新数组上修改
+        setArray(newElements); // 用新数组替换旧数组（volatile 写）
+        return true;
+    } finally {
+        lock.unlock();
+    }
+}
+// 读操作——完全无锁
+public E get(int index) {
+    return (E) getArray()[index]; // 直接读 volatile 数组引用
+}
+```
+
+**写时复制的特点：**
+- **读不加锁**：读的是当前数组引用（`volatile`），性能极高
+- **写要加锁**：先复制整个数组，修改后原子替换引用
+- **缺点**：每次写都要拷贝整个数组，**写密集场景不适合**
+- **数据弱一致**：写操作完成前，其他线程读到的仍是旧数据
+
+**这题面试经常挖坑：`Collections.synchronizedList()` 的迭代需要手动加锁！**
+
+```java
+List<String> syncList = Collections.synchronizedList(new ArrayList<>());
+// ❌ 遍历时不安全，可能抛 ConcurrentModificationException
+for (String s : syncList) { ... }
+
+// ✅ 必须手动加锁
+synchronized (syncList) {
+    for (String s : syncList) { ... }
+}
+```
+
+**背诵口诀：** Vector 太老别用了，synchronized 包一层简单粗暴，COW 读快写慢读多写少用它。
+
+> 面试话术：「线程安全的 List 有三种：Vector 已过时，synchronizedList 用一把锁包装但迭代时需要手动同步，CopyOnWriteArrayList 写时复制读不加锁，适合读多写少的场景，比如事件监听器列表。」
+
+### 10. Collections.synchronizedMap 和 ConcurrentHashMap 的区别？
+
+一句话：**synchronizedMap 是一把大锁锁整个 map，ConcurrentHashMap 是细粒度锁，性能差距巨大。**
+
+| 对比项 | `Collections.synchronizedMap()` | `ConcurrentHashMap` |
+|--------|--------------------------------|---------------------|
+| 锁机制 | 一把 `mutex` 锁，所有操作互斥 | JDK 1.8：CAS + synchronized 锁**单个桶** |
+| 并发度 | **1**（同一时刻只有一个线程能操作） | **数组长度**（不同桶可以并行） |
+| 迭代安全 | 需要**手动 synchronized** | 弱一致性迭代器，不抛异常 |
+| null key/value | 取决于被包装的 map（如 HashMap 允许 null） | **都不允许 null** |
+| 适用场景 | 临时需要线程安全，调用少 | **高并发场景首选** |
+
+**synchronizedMap 的原理非常简单：**
+
+```java
+// JDK 源码简化版
+public V get(Object key) {
+    synchronized (mutex) { return m.get(key); } // 每个方法都加同一把锁
+}
+public V put(K key, V value) {
+    synchronized (mutex) { return m.put(key, value); }
+}
+```
+
+就是把原来的 map 的每个方法都用 `synchronized(mutex)` 包一层，粗暴但有效。问题是所有操作串行化，**高并发下性能极差**。
+
+**ConcurrentHashMap 的优势：**
+- 读操作**完全不加锁**（`Node` 的 `val` 和 `next` 都是 `volatile` 的）
+- 写操作只锁**一个桶的头节点**
+- `size()` 用 `baseCount + CounterCell[]` 分散计数，避免竞争
+- 提供原子操作：`putIfAbsent()`、`computeIfAbsent()`、`merge()` 等
+
+**背诵口诀：** synchronized 一把大锁全串行，Concurrent 细锁高并发。90% 的场景用 ConcurrentHashMap。
+
+> 面试话术：「synchronizedMap 用一把互斥锁包装整个 map，所有操作串行化，并发性能差。ConcurrentHashMap 用 CAS + synchronized 只锁单个桶，不同桶可以并行操作，并发度远高于 synchronizedMap。高并发场景应该用 ConcurrentHashMap。」
+
+## 复习优先级（3~5 年）
 | 优先级 | 题目 |
 |--------|------|
-| ⭐⭐⭐⭐⭐ | HashMap 的底层数据结构？ |
-| ⭐⭐⭐⭐⭐ | HashMap 的 put 流程？ |
-| ⭐⭐⭐⭐⭐ | HashMap 的扩容机制？ |
-| ⭐⭐⭐⭐⭐ | ConcurrentHashMap 如何保证线程安全？ |
-| ⭐⭐⭐⭐ | ArrayList 和 LinkedList 的区别？ |
-| ⭐⭐⭐⭐ | HashMap 为什么线程不安全？ |
-| ⭐⭐⭐ | ArrayList 的扩容机制？ |
-| ⭐⭐⭐ | HashMap 和 Hashtable 的区别？ |
-| ⭐⭐⭐ | HashSet 的实现原理？ |
-| ⭐⭐ | fail-fast 和 fail-safe 机制？ |
+| P0 | 2. HashMap 的底层实现原理？JDK 1.8 做了哪些优化？ |
+| P0 | 3. HashMap 为什么线程不安全？会出现什么问题？ |
+| P0 | 4. HashMap 的扩容机制？为什么容量是 2 的幂次？ |
+| P0 | 5. ConcurrentHashMap 的实现原理？JDK 1.7 和 1.8 有什么区别？ |
+| P1 | 1. ArrayList 和 LinkedList 的区别？什么场景用哪个？ |
+| P1 | 6. LinkedHashMap 和 TreeMap 的区别和使用场景？ |
+| P1 | 7. HashSet 的实现原理？如何保证元素不重复？ |
+| P1 | 10. Collections.synchronizedMap 和 ConcurrentHashMap 的区别？ |
+| P2 | 8. fail-fast 和 fail-safe 是什么？ |
+| P2 | 9. 如何实现一个线程安全的 List？ |
