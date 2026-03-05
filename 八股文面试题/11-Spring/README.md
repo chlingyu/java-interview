@@ -1,382 +1,339 @@
-# 11 - Spring
-
-> 覆盖 Spring 全家桶核心知识：IOC、AOP、Bean 生命周期、循环依赖、MVC 执行流程、Boot 自动配置原理等高频面试考点。IOC/AOP 和 Bean 生命周期是面试重灾区。
+﻿# 11-Spring
 
 ---
 
-## 一、IOC 与 AOP
+## 一、IOC 与 Bean 管理
+### 1. Spring 的核心特性？IOC 和 AOP 是什么？
 
-### 1. 什么是 IOC？
+**Spring 两大核心：IOC（控制反转）管理对象创建，AOP（面向切面编程）管理横切关注点。**
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+**IOC（Inversion of Control，控制反转）：**
 
-**一句话回答**：IOC（Inversion of Control，控制反转）就是把对象的创建和依赖管理交给 Spring 容器，而不是自己 new。DI（依赖注入）是 IOC 的具体实现方式。
-
-**通俗理解**：
-
-以前你想吃饭，得自己买菜、洗菜、炒菜（自己 new 对象、管理依赖）。现在有了 Spring 这个"食堂"，你只需要说"我要一份红烧肉"，食堂就给你端上来，你不用关心肉从哪买的、怎么做的。
-
-- **没有 IOC** = 你在代码里到处 `new UserService(new UserDao(new DataSource(...)))`，自己管理所有依赖
-- **有了 IOC** = 你只需要声明"我需要一个 UserService"，Spring 自动帮你创建好并注入所有依赖
-
-**回到技术**："食堂"就是 Spring 的 **IOC 容器（ApplicationContext）**，它负责创建 Bean、管理 Bean 之间的依赖关系。"说我要什么"就是通过 `@Autowired` 或 `@Resource` 注解声明依赖，Spring 自动注入。
+原来：对象自己 `new` 依赖 → 现在：**Spring 容器**创建对象并注入依赖。「控制」指的是**创建对象的控制权**，从开发者手中**反转**给了 Spring 容器。
 
 ```java
-// 没有 IOC：自己管理依赖，耦合严重
-public class UserController {
-    private UserService userService = new UserServiceImpl(new UserDaoImpl());
-}
+// ❌ 传统方式：自己 new
+UserService service = new UserService(new UserDaoImpl());
 
-// 有了 IOC：声明依赖，Spring 自动注入
-@RestController
-public class UserController {
-    @Autowired  // Spring 自动注入，你不用关心 UserService 怎么创建的
-    private UserService userService;
+// ✅ IOC 方式：容器注入
+@Service
+public class UserService {
+    @Autowired
+    private UserDao userDao; // Spring 自动注入
 }
 ```
 
-**🎤 面试这样答**：
-> "IOC 就是控制反转，把对象的创建和依赖管理从代码中转移到 Spring 容器。以前是程序主动 new 对象，现在是容器创建好对象后注入给你，控制权从程序转移到了容器，所以叫控制反转。DI 依赖注入是 IOC 的实现方式，通过构造器注入、setter 注入或字段注入来完成。IOC 的好处是解耦，对象之间不直接依赖具体实现，方便测试和替换。"
+**AOP（Aspect Oriented Programming，面向切面编程）：**
 
----
+把**日志、事务、权限**等与业务无关的通用功能抽取出来，通过**动态代理**织入到业务方法中，避免代码重复。
 
-### 2. 什么是 AOP？实现原理？
+| AOP 术语 | 含义 |
+|---------|------|
+| **切面（Aspect）** | 横切关注点的模块化（如日志切面） |
+| **通知（Advice）** | 切面的具体行为（前置 Before、后置 After、环绕 Around、返回 AfterReturning、异常 AfterThrowing） |
+| **切入点（Pointcut）** | 定义在哪些方法上织入通知 |
+| **连接点（JoinPoint）** | 程序执行过程中的某个点（如方法调用） |
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+**背诵口诀：** IOC 让容器管对象，AOP 让切面管公共逻辑。
 
-**一句话回答**：AOP（Aspect-Oriented Programming，面向切面编程）是把日志、事务、权限等横切关注点从业务代码中抽出来，统一处理。底层用动态代理实现。
+> 面试话术：「Spring 核心是 IOC 和 AOP。IOC 把对象的创建和依赖注入交给容器管理，实现解耦。AOP 把日志、事务等横切关注点抽出来，通过动态代理织入业务方法，避免代码侵入。」
 
-**通俗理解**：
+### 2. Spring IOC 的实现原理？Bean 的生命周期？
 
-你开了一家公司，每个部门（业务方法）干活之前都要打卡、干完之后都要写日报。你不可能让每个部门自己写打卡和日报的代码，而是请一个"行政部"统一处理——所有人进出公司时自动打卡、自动生成日报。
+**IOC 容器本质是一个大 Map：key 是 Bean 名称，value 是 Bean 实例。** 底层通过**反射**创建对象、通过**依赖注入**组装对象。
 
-**回到技术**："行政部"就是 AOP 的切面（Aspect），"打卡"就是前置通知（Before），"写日报"就是后置通知（After）。AOP 通过动态代理在不修改原始代码的情况下，给方法"织入"额外逻辑。
+**Bean 的完整生命周期（面试必背）：**
 
-**AOP 的核心概念**：
+1. **实例化**：通过反射调用构造方法创建对象（`newInstance()`）
+2. **属性注入**：通过反射给字段 `set` 值（`@Autowired` 注入依赖）
+3. **Aware 接口回调**：如果实现了 `BeanNameAware`、`BeanFactoryAware` 等接口，注入相关资源
+4. **BeanPostProcessor 前置处理**：`postProcessBeforeInitialization()`
+5. **初始化**：执行 `@PostConstruct` 方法 → `InitializingBean.afterPropertiesSet()` → `init-method`
+6. **BeanPostProcessor 后置处理**：`postProcessAfterInitialization()`（AOP 代理在这里生成）
+7. **使用**：Bean 就绪，可以被使用
+8. **销毁**：容器关闭时执行 `@PreDestroy` → `DisposableBean.destroy()` → `destroy-method`
 
-| 概念 | 说明 |
-|------|------|
-| **切面（Aspect）** | 横切关注点的模块化，比如日志切面、事务切面 |
-| **切点（Pointcut）** | 定义在哪些方法上生效（用表达式匹配） |
-| **通知（Advice）** | 在切点处执行的逻辑（前置、后置、环绕、异常、最终） |
-| **织入（Weaving）** | 把切面应用到目标对象的过程 |
+**背诵口诀：** 实例化 → 注入 → Aware → 前处理 → 初始化 → 后处理 → 使用 → 销毁。记住「实注感前初后用销」。
 
-**底层实现——两种动态代理**：
+> 面试话术：「IOC 容器本质是一个 BeanDefinition 注册表加一个 Bean 实例缓存。Bean 生命周期是：反射实例化 → 属性注入 → Aware 回调 → BeanPostProcessor 前置 → 初始化方法 → BeanPostProcessor 后置（这里生成 AOP 代理）→ 使用 → 销毁。」
 
-| 代理方式 | 条件 | 原理 |
-|---------|------|------|
-| **JDK 动态代理** | 目标类⚡**实现了接口** | 基于接口生成代理类 |
-| **CGLIB 代理** | 目标类⚡**没有实现接口** | 基于继承，生成目标类的子类 |
+### 3. Spring 的依赖注入方式有哪些？
 
-> SpringBoot 2.x 之后默认使用 ⚡**CGLIB** 代理（`spring.aop.proxy-target-class=true`）。
+**三种注入方式：构造器注入、Setter 注入、字段注入。Spring 官方推荐构造器注入。**
 
-**🎤 面试这样答**：
-> "AOP 是面向切面编程，把日志、事务、权限校验等横切逻辑从业务代码中抽出来，通过切面统一处理。底层通过动态代理实现：如果目标类实现了接口就用 JDK 动态代理，没有接口就用 CGLIB 生成子类代理。SpringBoot 2.x 之后默认用 CGLIB。常见应用场景有 @Transactional 事务管理、@Aspect 自定义日志切面等。"
+| 方式 | 使用 | 优缺点 |
+|------|------|--------|
+| **构造器注入**（推荐） | `@Autowired` 在构造方法上 | ✅ 依赖不可变（final）、不会为 null、容易发现循环依赖 |
+| **Setter 注入** | `@Autowired` 在 set 方法上 | 可选依赖时适用，但依赖可被修改 |
+| **字段注入** | `@Autowired` 直接在字段上 | ⚠️ 最简洁但不推荐：无法 final、难以单元测试 |
 
----
+```java
+// ✅ 推荐：构造器注入
+@Service
+public class UserService {
+    private final UserDao userDao;
 
-## 二、Bean
-
-### 3. Spring Bean 的生命周期？
-
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐⭐
-
-**一句话回答**：Bean 的生命周期可以概括为四个阶段——实例化、属性注入、初始化、销毁。中间穿插了各种扩展点（BeanPostProcessor 等）。
-
-**通俗理解**：
-
-把 Bean 的一生想象成一个员工的入职流程：
-1. **实例化** = HR 发了 offer，人到公司了（创建对象）
-2. **属性注入** = 分配工位、电脑、门禁卡（注入依赖）
-3. **初始化** = 入职培训、熟悉业务（执行初始化方法）
-4. **使用** = 正式上班干活
-5. **销毁** = 离职，交还电脑门禁卡（执行销毁方法）
-
-**回到技术**："人到公司"就是通过反射调用构造方法创建 Bean 实例。"分配工位电脑"就是 Spring 把 `@Autowired` 标注的依赖注入进来。"入职培训"就是执行 `@PostConstruct`、`InitializingBean.afterPropertiesSet()`、`init-method` 等初始化回调。
-
-**原理详解**：
-
-```
-Bean 生命周期完整流程
-
-① 实例化（Instantiation）
-   → 通过反射调用构造方法创建 Bean 对象
-② 属性注入（Populate）
-   → 注入 @Autowired、@Value 等依赖
-③ Aware 回调
-   → 如果实现了 BeanNameAware、ApplicationContextAware 等接口，注入对应资源
-④ BeanPostProcessor.postProcessBeforeInitialization()
-   → 初始化前的扩展点（@PostConstruct 在这里执行）
-⑤ 初始化
-   → InitializingBean.afterPropertiesSet() → 自定义 init-method
-⑥ BeanPostProcessor.postProcessAfterInitialization()
-   → 初始化后的扩展点（⚡ AOP 代理在这里生成）
-⑦ 使用
-⑧ 销毁
-   → @PreDestroy → DisposableBean.destroy() → 自定义 destroy-method
+    @Autowired // Spring 4.3+ 单构造方法可省略
+    public UserService(UserDao userDao) {
+        this.userDao = userDao;
+    }
+}
 ```
 
-> **面试重点**：BeanPostProcessor 是 Spring 最重要的扩展点，AOP 的代理对象就是在 `postProcessAfterInitialization` 阶段生成的。
+**`@Autowired` vs `@Resource`：**
 
-**🎤 面试这样答**：
-> "Bean 的生命周期分四个大阶段：实例化、属性注入、初始化、销毁。具体来说，先通过反射创建对象，然后注入依赖，接着执行 Aware 回调，再经过 BeanPostProcessor 的前置处理，执行 @PostConstruct 和 InitializingBean 的初始化方法，最后经过 BeanPostProcessor 的后置处理，AOP 代理就是在这一步生成的。销毁时依次执行 @PreDestroy 和 DisposableBean 的销毁方法。"
+| 对比项 | `@Autowired` | `@Resource` |
+|--------|-------------|------------|
+| 来源 | **Spring** 注解 | **JDK** 注解（JSR-250） |
+| 匹配方式 | 先按**类型**，再按名称 | 先按**名称**，再按类型 |
 
----
+**背诵口诀：** 构造器注入最推荐：不可变、不为空、好测试。Autowired 按类型，Resource 按名称。
+
+> 面试话术：「Spring 有三种注入方式：构造器、Setter 和字段注入。官方推荐构造器注入，因为依赖可以声明为 final 不可变，且能在启动时就发现循环依赖。@Autowired 先按类型匹配，@Resource 先按名称匹配。」
 
 ### 4. Spring Bean 的作用域有哪些？
 
-> ⭐⭐⭐ 常问 | 难度：⭐⭐
+**Spring 有 6 种 Bean 作用域，常用的是 `singleton` 和 `prototype`。**
 
-**回答**：Spring 有 5 种 Bean 作用域，最常用的是 singleton 和 prototype。简单说，singleton 是"全公司共用一台打印机"，prototype 是"每个人发一台自己的"。
+| 作用域 | 含义 | 使用场景 |
+|--------|------|---------|
+| `singleton`（**默认**） | 整个 IOC 容器中只有**一个**实例 | 无状态的 Service、DAO |
+| `prototype` | 每次 `getBean()` 都创建**新实例** | 有状态的 Bean |
+| `request` | 每个 **HTTP 请求**一个实例 | Web 应用 |
+| `session` | 每个 **HTTP Session** 一个实例 | 用户会话数据 |
+| `application` | 每个 **ServletContext** 一个实例 | Web 应用全局 |
+| `websocket` | 每个 **WebSocket 会话**一个实例 | WebSocket |
 
-| 作用域 | 说明 |
-|--------|------|
-| **singleton** | ⚡**默认**，整个容器只有一个实例 |
-| **prototype** | 每次获取都创建一个新实例 |
-| request | 每个 HTTP 请求一个实例（Web 环境） |
-| session | 每个 HTTP Session 一个实例（Web 环境） |
-| application | 每个 ServletContext 一个实例（Web 环境） |
+**这题面试经常挖坑：singleton 的 Bean 是线程安全的吗？**
 
-> **面试追问**：singleton 的 Bean 是线程安全的吗？⚡**不是**。Spring 不保证线程安全，如果 Bean 中有可变的成员变量，多线程并发访问会有问题。解决办法：尽量设计成无状态 Bean，或者用 ThreadLocal。
+**不是。** Spring 不保证 singleton Bean 的线程安全。如果 Bean 中有**可变的成员变量**，多线程同时访问就可能出问题。解决方法：
+- 尽量让 Bean **无状态**（不保存可变实例变量）
+- 用 `ThreadLocal` 存线程私有数据
+- 改为 `prototype` 作用域
 
----
+**背诵口诀：** singleton 默认一个实例，prototype 每次新建。singleton 不等于线程安全。
 
-### 5. Spring 怎么解决循环依赖？
+> 面试话术：「Spring 默认 Bean 是 singleton 作用域，整个容器只有一个实例。prototype 每次获取都创建新实例。singleton 的 Bean 不是线程安全的，因为多线程共享同一个实例，如果有可变状态就会有并发问题。」
+### 5. Spring 的循环依赖如何解决？
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐⭐
+**循环依赖是 A 依赖 B，B 又依赖 A。Spring 通过「三级缓存」解决 singleton Bean 的循环依赖。**
 
-**一句话回答**：Spring 通过三级缓存解决 singleton Bean 的循环依赖——在 Bean 还没完全初始化时，先把一个"半成品"暴露出去，让对方先引用着。
+**三级缓存：**
 
-**通俗理解**：
+| 缓存 | 变量名 | 存什么 |
+|------|--------|--------|
+| 一级缓存 | `singletonObjects` | **完整的 Bean**（已初始化完毕） |
+| 二级缓存 | `earlySingletonObjects` | **早期暴露的 Bean**（已实例化但未完成属性注入） |
+| 三级缓存 | `singletonFactories` | **Bean 工厂**（`ObjectFactory`，用于生成早期引用，可能是代理对象） |
 
-A 和 B 互相依赖，就像两个人互相等对方先自我介绍：
-- A 说："我要先认识 B 才能完成入职"
-- B 说："我要先认识 A 才能完成入职"
-- 死锁了！
+**解决流程（A ↔ B 互相依赖）：**
+1. 创建 A：实例化 A → 把 A 的工厂放入**三级缓存**
+2. 注入 A 的依赖：发现需要 B → 去创建 B
+3. 创建 B：实例化 B → 把 B 的工厂放入三级缓存
+4. 注入 B 的依赖：发现需要 A → 从三级缓存拿到 A 的工厂 → 获取 A 的早期引用 → 放入**二级缓存**
+5. B 完成初始化 → 放入**一级缓存**
+6. 回到 A → 注入 B → A 完成初始化 → 放入一级缓存
 
-Spring 的解决办法：A 先递一张名片（半成品引用）给 B，B 拿着名片就算"认识"A 了，B 完成入职后，A 再拿到完整的 B，自己也完成入职。
+**三级缓存存工厂而不是直接存对象的原因：** 如果 A 需要被 AOP 代理，三级缓存的工厂可以在需要时生成**代理对象**而不是原对象，保证注入的是代理后的 Bean。
 
-**回到技术**："名片"就是 Bean 的早期引用（还没完成属性注入和初始化的对象）。Spring 用三级缓存来存放不同阶段的 Bean：
+**哪些循环依赖解决不了？**
+- **构造器注入**的循环依赖：实例化阶段就需要依赖，还没来得及放入缓存 → 报错
+- **prototype 作用域**：Spring 不缓存 prototype Bean → 报错
 
-| 缓存 | 名称 | 存什么 |
-|------|------|--------|
-| 一级缓存 | `singletonObjects` | ⚡**完整的 Bean**（初始化完毕） |
-| 二级缓存 | `earlySingletonObjects` | ⚡**半成品 Bean**（已实例化，未初始化） |
-| 三级缓存 | `singletonFactories` | ⚡**Bean 工厂**（ObjectFactory，用于生成早期引用） |
+**背诵口诀：** 三级缓存：一完整二半成品三工厂。构造器注入和 prototype 的循环依赖解决不了。
 
-**解决流程（A 和 B 互相依赖）**：
+> 面试话术：「Spring 通过三级缓存解决 singleton Bean 的字段/Setter 注入循环依赖。一级缓存存完整 Bean，二级存早期引用，三级存 Bean 工厂用于在需要时生成代理对象。构造器注入和 prototype 的循环依赖无法解决。」
 
-```
-① 创建 A：实例化 A → 把 A 的工厂放入三级缓存
-② A 注入属性：发现依赖 B → 去创建 B
-③ 创建 B：实例化 B → 把 B 的工厂放入三级缓存
-④ B 注入属性：发现依赖 A → 从三级缓存拿到 A 的工厂，生成 A 的早期引用，放入二级缓存
-⑤ B 初始化完成 → 放入一级缓存
-⑥ 回到 A：拿到完整的 B，A 初始化完成 → 放入一级缓存
-```
+## 二、AOP 与事务
+### 6. Spring AOP 的实现原理？JDK 动态代理和 CGLIB 的区别？
 
-> **为什么需要三级缓存而不是两级？** 因为如果 A 需要被 AOP 代理，三级缓存的工厂可以在需要时生成代理对象，而不是提前生成。这样保证了代理对象的创建时机正确。
+**Spring AOP 底层通过动态代理实现：有接口用 JDK 动态代理，无接口用 CGLIB。**
 
-> **哪些循环依赖 Spring 解决不了？** ① ⚡**构造器注入**的循环依赖（实例化阶段就需要对方，还没机会放入缓存）；② **prototype** 作用域的循环依赖（不使用缓存）。
+| 对比项 | JDK 动态代理 | CGLIB |
+|--------|-------------|-------|
+| 原理 | 基于**接口**，生成代理类实现同一个接口 | 基于**继承**，生成目标类的子类 |
+| 要求 | 目标类**必须实现接口** | 目标类**不能是 final** |
+| 性能 | JDK 8+ 性能提升很大，差距不明显 | 生成字节码较慢，但调用速度快 |
+| Spring 默认 | Spring Framework 默认有接口用 JDK | **Spring Boot 2.0+ 默认 CGLIB** |
 
-**🎤 面试这样答**：
-> "Spring 通过三级缓存解决 singleton Bean 的属性注入循环依赖。一级缓存存完整 Bean，二级缓存存半成品 Bean，三级缓存存 Bean 工厂。当 A 依赖 B、B 也依赖 A 时，A 实例化后先把工厂放入三级缓存，然后去创建 B。B 需要 A 时从三级缓存获取 A 的早期引用，B 完成后 A 也能完成。三级缓存的作用是延迟 AOP 代理的创建。但构造器注入和 prototype 的循环依赖无法解决。"
+**Spring Boot 2.0+ 为什么默认改用 CGLIB？** 因为 JDK 动态代理需要接口，实际开发中很多类没有接口，统一用 CGLIB 更省心。
 
----
+**背诵口诀：** 有接口 JDK 代理，无接口 CGLIB 继承。Spring Boot 默认 CGLIB。
 
-## 三、Spring MVC
+> 面试话术：「Spring AOP 通过动态代理实现。JDK 动态代理基于接口，CGLIB 基于继承生成子类。Spring Boot 2.0+ 默认使用 CGLIB。JDK 代理要求目标类实现接口，CGLIB 要求目标类不是 final 的。」
 
-### 6. Spring MVC 的执行流程？
+### 7. Spring 的事务传播机制？
 
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐
+**事务传播机制定义了当一个事务方法调用另一个事务方法时，事务如何传播。共 7 种（`@Transactional(propagation = ...)` ）。**
 
-**一句话回答**：请求经过 DispatcherServlet → HandlerMapping → HandlerAdapter → Controller → ViewResolver → 返回响应。
+| 传播行为 | 含义 | 一句话 |
+|---------|------|--------|
+| **`REQUIRED`**（**默认**） | 有事务就加入，没有就新建 | 最常用 |
+| `REQUIRES_NEW` | **总是新建**事务，挂起当前事务 | 独立事务，外层回滚不影响内层 |
+| `NESTED` | 有事务就新建**嵌套事务**（保存点） | 内层回滚到保存点，外层回滚则全部回滚 |
+| `SUPPORTS` | 有事务就加入，没有就以非事务运行 | 可有可无 |
+| `NOT_SUPPORTED` | 以非事务运行，有事务就**挂起** | 强制不用事务 |
+| `MANDATORY` | 必须在事务中，没事务就**抛异常** | 强制要求事务 |
+| `NEVER` | 不能在事务中，有事务就**抛异常** | 强制不能有事务 |
 
-**通俗理解**：
+**面试重点记住三个：** REQUIRED、REQUIRES_NEW、NESTED。
 
-把 Spring MVC 想象成一家餐厅的点餐流程：
-1. 客人进门 → **DispatcherServlet**（前台接待，所有请求都先到它这里）
-2. 前台查预约表 → **HandlerMapping**（根据 URL 找到对应的 Controller 方法）
-3. 前台叫服务员 → **HandlerAdapter**（适配器，负责调用具体的 Controller）
-4. 服务员去厨房下单 → **Controller**（执行业务逻辑，返回结果）
-5. 厨房做好菜装盘 → **ViewResolver**（视图解析器，渲染页面）
-6. 端给客人 → 返回响应
+**REQUIRES_NEW vs NESTED：**
+- **REQUIRES_NEW**：完全独立的新事务，外层事务回滚**不影响**内层
+- **NESTED**：嵌套在外层事务中，外层回滚则**内层也回滚**，内层回滚只回到保存点不影响外层
 
-**回到技术**："前台接待"就是 DispatcherServlet，它是 Spring MVC 的核心，所有 HTTP 请求都先经过它。"查预约表"就是 HandlerMapping 根据请求 URL 匹配到对应的 Controller 方法。现在前后端分离项目中，Controller 直接返回 JSON（`@ResponseBody`），不再需要 ViewResolver 渲染页面。
+**背诵口诀：** REQUIRED 有就加没就建，REQUIRES_NEW 总新建，NESTED 嵌套回保存点。
 
-```
-请求 → DispatcherServlet
-         → HandlerMapping（找到 Controller 方法）
-         → HandlerAdapter（调用 Controller）
-         → Controller（执行业务，返回数据）
-         → HttpMessageConverter（@ResponseBody 时，把对象转成 JSON）
-         → 响应
-```
+> 面试话术：「Spring 有 7 种事务传播机制。REQUIRED 是默认的，有事务就加入否则新建。REQUIRES_NEW 总是创建独立新事务，外层回滚不影响内层。NESTED 是嵌套事务，内层回滚到保存点不影响外层，但外层回滚会连带内层。」
 
-**🎤 面试这样答**：
-> "Spring MVC 的核心是 DispatcherServlet，所有请求先到它这里。它通过 HandlerMapping 根据 URL 找到对应的 Controller 方法，再通过 HandlerAdapter 调用该方法。Controller 执行完业务逻辑后返回结果，如果是前后端分离项目，通过 HttpMessageConverter 把对象序列化成 JSON 直接返回；如果是传统项目，通过 ViewResolver 解析视图并渲染页面。"
+### 8. @Transactional 的实现原理？什么情况下会失效？
 
----
+**`@Transactional` 底层通过 AOP 动态代理实现：Spring 为标注了该注解的方法生成代理对象，在方法前开启事务，成功则提交，异常则回滚。**
 
-## 四、Spring Boot
-
-### 7. SpringBoot 的自动配置原理？
-
-> ⭐⭐⭐⭐⭐ 必考 | 难度：⭐⭐⭐⭐
-
-**一句话回答**：SpringBoot 通过 `@SpringBootApplication` 中的 `@EnableAutoConfiguration` 注解，加载 `META-INF/spring.factories`（或 Spring Boot 3.x 的 `AutoConfiguration.imports`）中定义的自动配置类，根据条件注解（`@ConditionalOnXxx`）决定是否生效。
-
-**通俗理解**：
-
-以前用 Spring 要写一堆 XML 配置，就像自己组装电脑——CPU、内存、硬盘都要自己选、自己装。SpringBoot 的自动配置就像买品牌整机，开箱即用，它帮你把常用的配置都装好了，你只需要改改不满意的地方。
-
-**回到技术**："帮你装好"就是 SpringBoot 启动时自动加载一堆预定义的配置类。"改不满意的地方"就是你可以在 `application.yml` 中覆盖默认配置，或者自己定义同类型的 Bean 来替代自动配置的。
-
-**原理详解**：
-
-**注解链路**：
-
-```
-@SpringBootApplication
-  ├── @SpringBootConfiguration  → 标记这是一个配置类
-  ├── @ComponentScan            → 扫描当前包及子包的组件
-  └── @EnableAutoConfiguration  → ⚡ 核心：开启自动配置
-        └── @Import(AutoConfigurationImportSelector.class)
-              → 加载 META-INF/spring.factories 中的自动配置类
-```
-
-**条件注解**——决定配置类是否生效：
-
-| 注解 | 含义 |
-|------|------|
-| `@ConditionalOnClass` | 类路径下有某个类才生效 |
-| `@ConditionalOnMissingBean` | 容器中没有该 Bean 才生效（⚡用户自定义优先） |
-| `@ConditionalOnProperty` | 配置文件中有某个属性才生效 |
-
-**🎤 面试这样答**：
-> "SpringBoot 自动配置的核心是 @EnableAutoConfiguration 注解，它通过 AutoConfigurationImportSelector 加载 META-INF/spring.factories 文件中定义的所有自动配置类。这些配置类通过 @ConditionalOnClass、@ConditionalOnMissingBean 等条件注解判断是否生效。比如引入了 spring-boot-starter-web 依赖，类路径下有 DispatcherServlet，对应的 WebMvcAutoConfiguration 就会自动生效。如果用户自己定义了同类型的 Bean，自动配置会让步。"
-
----
-
-## 五、事务
-
-### 8. Spring 事务失效的场景有哪些？
-
-> ⭐⭐⭐⭐ 高频 | 难度：⭐⭐⭐
-
-**一句话回答**：Spring 事务基于 AOP 代理实现，凡是绕过代理或不满足代理条件的场景，事务都会失效。
-
-**通俗理解**：
-
-`@Transactional` 的事务是通过 AOP 代理实现的，你可以理解为 Spring 在你的方法外面包了一层"事务外套"。如果调用方式绕过了这层外套，事务就不生效了。
-
-**回到技术**："事务外套"就是 Spring AOP 生成的代理对象，它在目标方法前后添加了开启事务和提交/回滚事务的逻辑。"绕过外套"就是调用没有经过代理对象，比如同类中 `this.methodB()` 是直接调用原始对象的方法，不走代理，所以事务注解不生效。
-
-**常见失效场景**：
+**@Transactional 失效的 8 种场景（必背）：**
 
 | 场景 | 原因 |
 |------|------|
-| **同类中方法内部调用** | `this.methodB()` 是直接调用，⚡**没走代理**，事务不生效 |
-| **方法不是 public** | Spring AOP 默认只代理 public 方法 |
-| **异常被 catch 吞掉了** | 事务靠异常触发回滚，异常被捕获了就不会回滚 |
-| **抛了非 RuntimeException** | 默认只回滚 `RuntimeException` 和 `Error`，受检异常不回滚 |
-| **类没被 Spring 管理** | 没加 `@Service` 等注解，不是 Spring Bean，自然没有代理 |
-| **propagation 设置错误** | 比如 `NOT_SUPPORTED` 会挂起当前事务 |
+| **方法不是 public** | Spring AOP 代理只拦截 public 方法 |
+| **自调用**（同类内方法调用） | `this.method()` 走的是原始对象，不经过代理 → 注解无效 |
+| **异常被 catch 吞掉** | 事务管理器检测不到异常，以为成功了不会回滚 |
+| **抛出的是 checked 异常** | 默认只回滚 `RuntimeException` 和 `Error`，checked 异常不回滚 |
+| **数据库引擎不支持事务** | 如 MyISAM 不支持事务 |
+| **Bean 没被 Spring 管理** | 没有 `@Service`/`@Component` 等注解，不是 Spring Bean |
+| **propagation 设置不当** | 如 `NOT_SUPPORTED` 不使用事务 |
+| **多线程** | 事务绑定在 ThreadLocal 上，新线程没有事务上下文 |
+
+**自调用问题如何解决？**
+- 注入自身：`@Autowired private UserService self;` 然后 `self.method()`
+- 使用 `AopContext.currentProxy()`
+- 把被调用方法抽到另一个类中
+
+**rollbackFor 配置：** 建议显式指定 `@Transactional(rollbackFor = Exception.class)`，让 checked 异常也能回滚。
+
+**背诵口诀：** 失效八场景：非 public、自调用、吞异常、checked 异常、不支持事务引擎、不是 Bean、传播设错、多线程。
+
+> 面试话术：「@Transactional 通过 AOP 代理实现。常见失效场景有：非 public 方法、同类内自调用（不走代理）、异常被 catch 吞掉、checked 异常默认不回滚。建议加 rollbackFor = Exception.class，自调用问题可以通过注入自身或抽取到另一个类来解决。」
+
+## 三、MVC 与 Boot
+### 9. SpringMVC 的工作流程？
+
+**SpringMVC 处理一个 HTTP 请求的完整流程（面试高频）：**
+
+1. 客户端发送请求到 **`DispatcherServlet`**（前端控制器，所有请求的入口）
+2. DispatcherServlet 调用 **`HandlerMapping`**（处理器映射器）根据 URL 找到对应的 Handler（Controller 方法）
+3. HandlerMapping 返回 **`HandlerExecutionChain`**（包含 Handler 和拦截器链）
+4. DispatcherServlet 调用 **`HandlerAdapter`**（处理器适配器）执行 Handler
+5. Handler（Controller）执行业务逻辑，返回 **`ModelAndView`**
+6. DispatcherServlet 调用 **`ViewResolver`**（视图解析器）解析视图
+7. ViewResolver 返回 **`View`** 对象
+8. DispatcherServlet 渲染视图，返回响应给客户端
+
+**前后端分离场景下（@RestController）：** 不走 ViewResolver，直接通过 `HttpMessageConverter` 把返回对象序列化成 JSON 返回。
+
+**核心组件：**
+
+| 组件 | 作用 |
+|------|------|
+| `DispatcherServlet` | 前端控制器，所有请求入口 |
+| `HandlerMapping` | 根据 URL 找到对应的 Controller 方法 |
+| `HandlerAdapter` | 适配并执行 Controller 方法 |
+| `ViewResolver` | 解析视图名称为 View 对象 |
+
+**背诵口诀：** 请求进 Dispatcher → Mapping 找 Handler → Adapter 执行 → ViewResolver 渲染。
+
+> 面试话术：「SpringMVC 的核心是 DispatcherServlet，它接收所有请求，通过 HandlerMapping 找到对应的 Controller 方法，用 HandlerAdapter 执行，返回 ModelAndView 后通过 ViewResolver 渲染视图。前后端分离场景下用 @RestController，直接返回 JSON 不走视图解析。」
+
+### 10. Spring Boot 的自动配置原理？
+
+**Spring Boot 自动配置核心是 `@EnableAutoConfiguration` 注解 + `spring.factories` 文件（Spring Boot 2.x）/ `AutoConfiguration.imports` 文件（Spring Boot 3.x）。**
+
+**自动配置流程：**
+1. `@SpringBootApplication` 包含 `@EnableAutoConfiguration`
+2. `@EnableAutoConfiguration` 通过 `@Import(AutoConfigurationImportSelector.class)` 导入自动配置类
+3. `AutoConfigurationImportSelector` 从 `META-INF/spring.factories`（2.x）或 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`（3.x）文件中读取所有自动配置类
+4. 通过 **`@Conditional` 系列注解**筛选：满足条件的配置类才生效
+
+**核心条件注解：**
+
+| 注解 | 条件 |
+|------|------|
+| `@ConditionalOnClass` | classpath 下**存在**指定的类才生效 |
+| `@ConditionalOnMissingBean` | 容器中**没有**指定 Bean 才生效（用户自定义优先） |
+| `@ConditionalOnProperty` | 配置文件中**存在**指定属性才生效 |
 
 ```java
-// ❌ 事务失效：同类内部调用，没走代理
-@Service
-public class UserService {
-    public void methodA() {
-        this.methodB(); // 直接调用，不走代理，methodB 的事务不生效
-    }
-
-    @Transactional
-    public void methodB() {
-        // 业务逻辑...
-    }
-}
+// 示例：DataSourceAutoConfiguration
+@Configuration
+@ConditionalOnClass(DataSource.class)  // classpath 有 DataSource 类才配置
+@EnableConfigurationProperties(DataSourceProperties.class)
+public class DataSourceAutoConfiguration { ... }
 ```
 
-> **解决内部调用问题**：① 注入自身 `@Autowired UserService self`，用 `self.methodB()` 调用；② 使用 `AopContext.currentProxy()` 获取代理对象。
+**背诵口诀：** @SpringBootApplication → @EnableAutoConfiguration → 读 spring.factories → @Conditional 筛选。
 
-**🎤 面试这样答**：
-> "Spring 事务基于 AOP 代理实现，常见失效场景有：同类内部调用没走代理、方法不是 public、异常被 catch 吞掉、抛的是受检异常默认不回滚、类没被 Spring 管理。最常踩的坑是同类内部调用，因为 this 调用不经过代理对象，解决办法是注入自身或用 AopContext 获取代理。"
+> 面试话术：「Spring Boot 自动配置通过 @EnableAutoConfiguration 触发，从 spring.factories 文件加载所有自动配置类，再通过 @ConditionalOnClass、@ConditionalOnMissingBean 等条件注解判断是否生效。用户自定义的 Bean 优先于自动配置，因为有 @ConditionalOnMissingBean 兜底。」
 
----
+### 11. Spring Boot 和 Spring 的区别？
 
-### 9. @Autowired 和 @Resource 的区别？
+一句话：**Spring Boot 是 Spring 的脚手架，简化配置、开箱即用。**
 
-> ⭐⭐⭐ 常问 | 难度：⭐⭐
+| 对比项 | Spring | Spring Boot |
+|--------|--------|-------------|
+| 配置方式 | 大量 XML / Java Config | **约定大于配置**，自动配置 |
+| 依赖管理 | 手动管理版本 | **starter** 一键引入，版本自动管理 |
+| 内嵌服务器 | 需要外部 Tomcat | **内嵌 Tomcat/Jetty**，打 jar 包直接运行 |
+| 启动方式 | 部署到外部容器 | `java -jar` 直接启动 |
+| 监控 | 需要自己搭 | **Actuator** 内置监控端点 |
 
-**回答**：简单说，`@Autowired` 是 Spring 的注解，默认按类型注入；`@Resource` 是 JDK 的注解，默认按名称注入。
+**Spring Boot Starter 是什么？** Starter 是一组依赖的集合，引入一个 starter 就自动引入所有相关依赖。如 `spring-boot-starter-web` 包含了 Spring MVC、Tomcat、Jackson 等。
 
-| 对比项 | @Autowired | @Resource |
-|--------|-----------|-----------|
-| 来源 | ⚡**Spring** 提供 | ⚡**JDK** 提供（`javax.annotation`） |
-| 注入方式 | 默认按⚡**类型**（byType） | 默认按⚡**名称**（byName） |
-| 找不到时 | 可配合 `@Qualifier` 指定名称 | 按名称找不到再按类型找 |
-| 支持位置 | 字段、构造器、setter | 字段、setter（不支持构造器） |
+**背诵口诀：** Spring Boot = Spring + 自动配置 + 内嵌服务器 + Starter 依赖。
 
-> **怎么选？** 如果项目只用 Spring，两个都行。如果考虑框架无关性（比如未来可能换框架），用 `@Resource`。Spring 官方推荐⚡**构造器注入**，而不是字段注入。
+> 面试话术：「Spring Boot 是基于 Spring 的快速开发框架，核心优势是自动配置、内嵌服务器和 Starter 依赖管理。开发者不需要写大量 XML 配置，引入 starter 即可使用。Spring Boot 并没有引入新技术，只是简化了 Spring 的使用方式。」
 
----
+## 四、注解
+### 12. Spring 的常用注解？
 
-### 10. Spring 事务的传播行为有哪些？
+**按功能分类：**
 
-> ⭐⭐⭐ 常问 | 难度：⭐⭐⭐
+| 分类 | 注解 | 作用 |
+|------|------|------|
+| **Bean 定义** | `@Component` | 通用组件 |
+| | `@Service` | 业务层 |
+| | `@Repository` | 数据访问层 |
+| | `@Controller` / `@RestController` | 控制层（@RestController = @Controller + @ResponseBody） |
+| **依赖注入** | `@Autowired` | 按类型注入 |
+| | `@Qualifier` | 配合 @Autowired，按名称指定 Bean |
+| | `@Resource` | 按名称注入（JDK 注解） |
+| | `@Value` | 注入配置值 |
+| **配置** | `@Configuration` | 标记配置类 |
+| | `@Bean` | 方法返回值注册为 Bean |
+| | `@ComponentScan` | 指定包扫描路径 |
+| **Web** | `@RequestMapping` / `@GetMapping` / `@PostMapping` | URL 映射 |
+| | `@RequestBody` | 接收 JSON 请求体 |
+| | `@PathVariable` | 获取 URL 路径变量 |
+| | `@RequestParam` | 获取查询参数 |
+| **AOP/事务** | `@Aspect` | 标记切面类 |
+| | `@Transactional` | 声明式事务 |
+| **条件** | `@Conditional` | 条件装配 |
+| | `@Profile` | 环境（dev/test/prod）条件 |
 
-**回答**：事务传播行为定义的是"一个事务方法调用另一个事务方法时，事务怎么传递"。简单说就是：方法 A 有事务，方法 A 调了方法 B，B 是加入 A 的事务，还是自己新开一个？
+**背诵口诀：** Bean 四注解（Component/Service/Repository/Controller），注入三注解（Autowired/Resource/Value），配置三注解（Configuration/Bean/ComponentScan）。
 
-Spring 定义了 ⚡**7 种**传播行为，但常用的就前三种：
+> 面试话术：「Spring 常用注解按功能分：Bean 定义用 @Component/@Service/@Repository/@Controller，依赖注入用 @Autowired/@Resource，配置用 @Configuration/@Bean，Web 用 @RestController/@RequestMapping/@RequestBody，事务用 @Transactional。」
 
-| 传播行为 | 含义 | 通俗理解 |
-|---------|------|---------|
-| ⚡**REQUIRED**（默认） | 有事务就加入，没有就新建 | "有车搭车，没车自己开" |
-| ⚡**REQUIRES_NEW** | 不管有没有，都新建事务 | "不管你开不开车，我自己开" |
-| **NESTED** | 有事务就在里面嵌套一个子事务（savepoint） | "搭你的车，但我坐后排，出事我先下车不影响你" |
-| SUPPORTS | 有事务就加入，没有就不用事务 | "有车搭车，没车走路" |
-| NOT_SUPPORTED | 不管有没有，都不用事务 | "我就走路，不坐车" |
-| MANDATORY | 必须在事务中调用，否则抛异常 | "必须有车，没车不出门" |
-| NEVER | 必须不在事务中调用，否则抛异常 | "必须走路，有车也不坐" |
-
-```java
-@Service
-public class OrderService {
-    @Autowired
-    private LogService logService;
-
-    @Transactional // 默认 REQUIRED
-    public void createOrder() {
-        // 创建订单...
-        logService.saveLog(); // 调用另一个事务方法
-    }
-}
-
-@Service
-public class LogService {
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveLog() {
-        // 记录日志：新开事务，即使 createOrder 回滚，日志也不会丢
-    }
-}
-```
-
-> **面试重点**：REQUIRED 和 REQUIRES_NEW 的区别。REQUIRED 是加入调用方的事务，一荣俱荣一损俱损；REQUIRES_NEW 是挂起调用方事务，自己新开一个，互不影响。典型场景：操作日志记录用 REQUIRES_NEW，即使业务回滚，日志也要保留。
-
----
-
-## 面试高频程度排序（3~5 年）
-
+## 复习优先级（3~5 年）
 | 优先级 | 题目 |
 |--------|------|
-| ⭐⭐⭐⭐⭐ | IOC 是什么？ |
-| ⭐⭐⭐⭐⭐ | AOP 原理？ |
-| ⭐⭐⭐⭐⭐ | Bean 的生命周期？ |
-| ⭐⭐⭐⭐⭐ | Spring 怎么解决循环依赖？ |
-| ⭐⭐⭐⭐⭐ | Spring MVC 执行流程？ |
-| ⭐⭐⭐⭐⭐ | SpringBoot 自动配置原理？ |
-| ⭐⭐⭐⭐ | Spring 事务失效场景？ |
-| ⭐⭐⭐ | 事务的传播行为？ |
-| ⭐⭐⭐ | Bean 的作用域？ |
-| ⭐⭐⭐ | @Autowired 和 @Resource 的区别？ |
+| P0 | 1. Spring 的核心特性？IOC 和 AOP 是什么？ |
+| P0 | 2. Spring IOC 的实现原理？Bean 的生命周期？ |
+| P0 | 5. Spring 的循环依赖如何解决？ |
+| P0 | 6. Spring AOP 的实现原理？JDK 动态代理和 CGLIB 的区别？ |
+| P0 | 7. Spring 的事务传播机制？ |
+| P0 | 8. @Transactional 的实现原理？什么情况下会失效？ |
+| P0 | 10. Spring Boot 的自动配置原理？ |
+| P1 | 3. Spring 的依赖注入方式有哪些？ |
+| P1 | 4. Spring Bean 的作用域有哪些？ |
+| P1 | 9. SpringMVC 的工作流程？ |
+| P1 | 11. Spring Boot 和 Spring 的区别？ |
+| P2 | 12. Spring 的常用注解？ |
