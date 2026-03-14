@@ -43,10 +43,10 @@
 
 | 方式 | 条件 | 原理 |
 |------|------|------|
-| **JDK 动态代理** | 目标类**实现了接口** | 基于 `java.lang.reflect.Proxy`，生成接口的代理类 |
-| **CGLIB 动态代理** | 目标类**没有实现接口** | 生成目标类的**子类**作为代理（不能代理 `final` 类和方法） |
+| **JDK 动态代理** | 目标类**实现了接口**且未强制类代理 | 基于 `java.lang.reflect.Proxy`，生成接口的代理类 |
+| **CGLIB 动态代理** | 目标类**没有接口**，或开启了类代理（`proxyTargetClass=true`） | 生成目标类的**子类**作为代理（不能代理 `final` 类和方法） |
 
-**⚠️ 面试挖坑提醒**：Spring Boot 2.x 默认使用 **CGLIB** 代理，即使目标类实现了接口也用 CGLIB。
+**⚠️ 面试挖坑提醒**：Spring Boot 2.x 默认 `spring.aop.proxy-target-class=true`，因此常见场景即使目标类有接口也会使用 CGLIB 代理。
 
 ---
 
@@ -206,11 +206,11 @@
 
 ### 10. @Autowired 和 @Resource 有什么区别？
 
-**一句话总结**：`@Autowired` 是 Spring 提供的，**按类型**注入；`@Resource` 是 JDK 提供的（JSR-250 标准），**按名称**注入。
+**一句话总结**：`@Autowired` 是 Spring 提供的，**按类型**注入；`@Resource` 来自 **JSR-250 / Jakarta 注解规范**，**按名称**注入。
 
 | 对比项 | @Autowired | @Resource |
 |--------|-----------|-----------|
-| 来源 | Spring 框架 | JDK 标准（`javax.annotation`） |
+| 来源 | Spring 框架 | JSR-250 标准（JDK 8 及 Spring 5 用 `javax.annotation`，Spring 6 / Boot 3 用 `jakarta.annotation`） |
 | 默认注入方式 | **按类型**（byType） | **按名称**（byName） |
 | 找不到时 | 报错（可加 `@Qualifier` 指定名称） | 退而求其次按类型找 |
 | 是否可以用在构造器上 | ✅ | ❌ |

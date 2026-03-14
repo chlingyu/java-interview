@@ -178,8 +178,8 @@ elementData = Arrays.copyOf(elementData, newCapacity);
 | null 键/值 | ❌ 不允许 | ❌ 不允许 |
 
 **JDK 8 的 ConcurrentHashMap 工作方式**：
-- **读操作**：不加锁，用 `volatile`（一种轻量级同步机制，详见 Java 并发）保证其他线程能立即看到最新值
-- **写操作**：用 **CAS**（比较并交换，详见 Java 并发第 X 题）尝试写入空桶；如果桶已有数据，用 `synchronized` 锁住该桶的头节点，只锁一个桶不影响其他桶的并发访问
+- **读操作**：不加锁，用 `volatile`（一种轻量级同步机制，详见 Java 并发第 7 题）保证其他线程能立即看到最新值
+- **写操作**：用 **CAS**（比较并交换，详见 Java 并发第 5 题）尝试写入空桶；如果桶已有数据，用 `synchronized` 锁住该桶的头节点，只锁一个桶不影响其他桶的并发访问
 
 **⚠️ 面试挖坑提醒**：「ConcurrentHashMap 的 key 和 value 能不能为 null？」—— **都不能**！因为在并发场景下，如果 `get(key)` 返回 null，无法区分是"key 不存在"还是"value 就是 null"，会造成歧义。
 

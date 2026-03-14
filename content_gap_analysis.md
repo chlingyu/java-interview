@@ -163,8 +163,8 @@
 | **零拷贝（Zero Copy）** | 中频 | sendfile / mmap，Kafka / Netty / NIO 都用到，可与 JVM 直接内存题关联 |
 | **IO 模型（BIO/NIO/AIO）** | 高频 | 可以放在网络或操作系统章节，Java NIO 面试高频 |
 
-> [!IMPORTANT]
-> 「IO 模型」是 Java 后端高频考点（BIO/NIO/AIO/多路复用），当前整个仓库都没有覆盖，这是一个**跨模块的全局缺口**。建议放在操作系统或新建「IO 与网络编程」章节。
+> [!NOTE]
+> 「IO 模型」已在操作系统 Q9 补齐（Round 4），不再是全局缺口。
 
 ---
 
@@ -217,14 +217,12 @@
 
 **已覆盖**：CAP、BASE、分布式事务、分布式 ID、微服务核心组件、熔断降级、Nacos vs ZK、RPC vs HTTP、Gateway 原理、OpenFeign 原理、Nacos 配置中心、Sentinel 限流熔断、调用链路、负载均衡、Spring Cloud vs Dubbo
 
-**缺口（建议补 2~3 题）**：
+**缺口状态（Round 11 后更新）**：限流算法、接口幂等性已补齐。主流高频/中频缺口已关闭。
 
-| 缺失考点 | 高频程度 | 说明 |
+| 剩余低频项 | 高频程度 | 说明 |
 |---------|---------|------|
-| **分布式锁（完整版）** | 高频 | Redis 分布式锁在 Redis 章已有，但 ZooKeeper 分布式锁、Redisson 的 WatchDog 机制没有在分布式章节完整串联 |
-| **接口幂等性设计** | 高频 | 消息队列章讲了 MQ 幂等，但通用的接口幂等（Token 机制、唯一请求 ID）没有 |
-| **限流算法** | 中频 | 令牌桶、漏桶、滑动窗口，Sentinel 题只讲了规则没讲算法原理 |
-| **服务链路追踪（Skywalking / Zipkin）** | 低频 | 了解即可 |
+| **分布式锁（完整版）** | 中频 | Redis 分布式锁在 Redis 章已有，ZooKeeper 分布式锁、Redisson WatchDog 机制可按需补充 |
+| **服务链路追踪（SkyWalking / Zipkin）** | 低频 | 了解即可，非必须 |
 
 ---
 

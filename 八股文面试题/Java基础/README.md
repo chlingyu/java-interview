@@ -11,7 +11,7 @@
 | 名称 | 全称 | 作用 | 包含内容 |
 |------|------|------|---------|
 | **JDK** | Java Development Kit | 开发 + 编译 + 运行 | JRE + `javac`编译器 + `jar`打包工具 + `javadoc`文档工具 + 调试器 |
-| **JRE** | Java Runtime Environment | 运行 Java 程序 | JVM + 核心类库（`rt.jar`等） |
+| **JRE** | Java Runtime Environment | 运行 Java 程序 | JVM + 核心类库（JDK 8 及之前为 `rt.jar` 等） |
 | **JVM** | Java Virtual Machine | 加载并执行字节码 | 类加载器 + 执行引擎 + 内存管理 |
 
 **背诵口诀**：「**JDK 管开发，JRE 管运行，JVM 管执行**」
@@ -449,7 +449,7 @@ Class<?> c3 = Class.forName("java.lang.String");  // 方式3：全限定类名
 | `toString()` | 返回字符串表示 | 默认返回 `类名@哈希值`，建议重写 |
 | `clone()` | 创建并返回对象的拷贝 | 需实现 `Cloneable`，默认浅拷贝 |
 | `getClass()` | 返回运行时类的 Class 对象 | `final` 方法不可重写 |
-| `finalize()` | 垃圾回收（GC）前调用 | **已废弃**（JDK 9+），不推荐使用 |
+| `finalize()` | 对象被回收前**可能**被调用一次，但不保证及时执行 | **已废弃**（JDK 9+），不应依赖 |
 | `wait()` / `notify()` | 线程间通信 | 必须在 `synchronized` 块中调用 |
 
 > **面试话术**：Object 是所有类的根类，最常考的方法是 equals 和 hashCode，需要一起重写。toString 建议重写方便调试。wait/notify 用于线程间协作，必须在同步块中使用。finalize 在 JDK 9 之后已被标记为废弃，不应使用。

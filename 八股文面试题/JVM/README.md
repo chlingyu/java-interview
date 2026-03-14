@@ -317,7 +317,7 @@ Bootstrap ClassLoader（启动类加载器，加载 JDK 核心类如 java.lang.S
 | **Klass Pointer**（类型指针） | 指向类的元数据，表示"这个对象是哪个类的实例" |
 | **数组长度**（仅数组对象） | 记录数组的长度 |
 
-**锁升级过程**（与 Java 并发第 4 题 synchronized 相关）：
+**锁升级过程**（与 Java 并发第 6 题 synchronized 相关，以 JDK 6~14 的 HotSpot 为主；JDK 15 默认关闭偏向锁，JDK 18+ 已移除）：
 
 ```
 无锁 → 偏向锁（只有一个线程访问）→ 轻量级锁（CAS 自旋）→ 重量级锁（操作系统互斥量）

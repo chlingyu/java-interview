@@ -79,72 +79,7 @@ NEW（新建）→ start() → RUNNABLE（可运行）
 
 ## 二、锁与同步
 
-### 4. synchronized 关键字的原理是什么？
-
-**一句话总结**：`synchronized` 是 Java 的内置锁，可以修饰**方法**或**代码块**，保证同一时刻只有一个线程执行被锁住的代码。底层通过 **Monitor（监视器锁）** 实现。
-
-**三种用法**：
-
-| 用法 | 锁的对象 | 示例 |
-|------|---------|------|
-| 修饰普通方法 | **当前对象实例**（this） | `synchronized void method()` |
-| 修饰静态方法 | **当前类的 Class 对象** | `static synchronized void method()` |
-| 修饰代码块 | **括号中指定的对象** | `synchronized(obj) { ... }` |
-
-**底层原理**：
-- **代码块**：编译后生成 `monitorenter`（获取锁）和 `monitorexit`（释放锁）指令
-- **方法**：在方法标志中加上 `ACC_SYNCHRONIZED` 标记
-
-**JDK 6 的锁优化**（锁升级过程）：
-
-```
-无锁 → 偏向锁 → 轻量级锁 → 重量级锁（只能升级不能降级）
-```
-
-| 锁级别 | 适用场景 | 原理 |
-|--------|---------|------|
-| **偏向锁** | 只有一个线程访问 | 在对象头记录线程 ID，下次同一线程来就不用加锁了 |
-| **轻量级锁** | 多个线程**交替**访问（无竞争） | 用 CAS 尝试获取锁，失败就升级 |
-| **重量级锁** | 多个线程**同时**竞争 | 调用操作系统的互斥锁，线程会阻塞挂起 |
-
-> **面试话术**：synchronized 可以修饰方法和代码块。修饰普通方法锁的是 this 对象，修饰静态方法锁的是 Class 对象。底层通过 Monitor 实现，代码块用 monitorenter 和 monitorexit 指令。JDK 6 之后做了很大的优化，引入了偏向锁、轻量级锁，锁可以从偏向锁升级到轻量级锁再到重量级锁，减少了不必要的性能开销。
-
----
-
-### 5. volatile 关键字有什么作用？
-
-**一句话总结**：`volatile` 保证变量的**可见性**（一个线程修改后其他线程立即看到）和**有序性**（防止指令重排序），但**不保证原子性**。
-
-**两大作用**：
-
-| 作用 | 说明 | 举例 |
-|------|------|------|
-| **可见性** | 修改 volatile 变量后，立即刷新到主内存，其他线程读取时从主内存拿最新值 | 一个线程修改 flag = true，另一个线程立刻能看到 |
-| **有序性** | 通过插入内存屏障，禁止 volatile 读写前后的指令被编译器或 CPU 重新排序 | 双重检查锁定单例模式必须用 volatile |
-
-**⚠️ 面试挖坑提醒**（这题面试经常挖坑）：「volatile 能保证原子性吗？」—— **不能！** 比如 `count++` 这个操作实际上是"读-改-写"三步，volatile 只能保证每次读到最新值，但多个线程同时 `count++` 仍然会出错。要保证原子性应该用 `AtomicInteger` 或 `synchronized`。
-
-**经典应用**：**双重检查锁定（DCL）单例模式**
-
-```java
-class Singleton {
-    private static volatile Singleton instance;
-    public static Singleton getInstance() {
-        if (instance == null) {                // 第一次检查
-            synchronized (Singleton.class) {
-                if (instance == null) {        // 第二次检查
-                    instance = new Singleton(); // volatile 防止这里指令重排序
-                }
-            }
-        }
-        return instance;
-    }
-}
-```
-
----
-
-### 6. 什么是 Java 内存模型（JMM）？
+### 4. 什么是 Java 内存模型（JMM）？
 
 **一句话总结**：JMM（Java Memory Model）定义了多线程环境下，线程之间如何**共享变量**的规则。核心概念是**主内存**（所有线程共享）和**工作内存**（每个线程私有的副本）。
 
@@ -166,7 +101,7 @@ class Singleton {
 
 ---
 
-### 7. 什么是 CAS？有什么问题？
+### 5. 什么是 CAS？有什么问题？
 
 **一句话总结**：CAS（Compare And Swap，比较并交换）是一种**无锁**的原子操作。它比较内存中的值和期望值，如果相同就更新为新值，否则不操作。是乐观锁的核心实现方式。
 
@@ -194,6 +129,71 @@ count.incrementAndGet();     // 原子性的 count++
 | **只能保证一个变量的原子性** | 无法同时对多个变量做原子操作 | 把多个变量封装成一个对象，用 `AtomicReference` |
 
 **背诵口诀**：「**CAS 三问题：ABA、自旋、单变量**」
+
+---
+
+### 6. synchronized 关键字的原理是什么？
+
+**一句话总结**：`synchronized` 是 Java 的内置锁，可以修饰**方法**或**代码块**，保证同一时刻只有一个线程执行被锁住的代码。底层通过 **Monitor（监视器锁）** 实现。
+
+**三种用法**：
+
+| 用法 | 锁的对象 | 示例 |
+|------|---------|------|
+| 修饰普通方法 | **当前对象实例**（this） | `synchronized void method()` |
+| 修饰静态方法 | **当前类的 Class 对象** | `static synchronized void method()` |
+| 修饰代码块 | **括号中指定的对象** | `synchronized(obj) { ... }` |
+
+**底层原理**：
+- **代码块**：编译后生成 `monitorenter`（获取锁）和 `monitorexit`（释放锁）指令
+- **方法**：在方法标志中加上 `ACC_SYNCHRONIZED` 标记
+
+**JDK 6 的锁优化**（锁升级过程，以 JDK 6~14 的 HotSpot 为主；JDK 15 默认关闭偏向锁，JDK 18+ 已移除偏向锁）：
+
+```
+无锁 → 偏向锁 → 轻量级锁 → 重量级锁（只能升级不能降级）
+```
+
+| 锁级别 | 适用场景 | 原理 |
+|--------|---------|------|
+| **偏向锁** | 只有一个线程访问 | 在对象头记录线程 ID，下次同一线程来就不用加锁了 |
+| **轻量级锁** | 多个线程**交替**访问（无竞争） | 用 CAS（详见上一题）尝试获取锁，失败就升级 |
+| **重量级锁** | 多个线程**同时**竞争 | 调用操作系统的互斥锁，线程会阻塞挂起 |
+
+> **面试话术**：synchronized 可以修饰方法和代码块。修饰普通方法锁的是 this 对象，修饰静态方法锁的是 Class 对象。底层通过 Monitor 实现，代码块用 monitorenter 和 monitorexit 指令。JDK 6 之后做了很大的优化，引入了偏向锁、轻量级锁，锁可以从偏向锁升级到轻量级锁再到重量级锁，减少了不必要的性能开销。注意 JDK 15 默认关闭了偏向锁，面试时先确认聊的是哪个版本。
+
+---
+
+### 7. volatile 关键字有什么作用？
+
+**一句话总结**：`volatile` 保证变量的**可见性**（一个线程修改后其他线程立即看到，详见 JMM 第 4 题）和**有序性**（防止指令重排序），但**不保证原子性**。
+
+**两大作用**：
+
+| 作用 | 说明 | 举例 |
+|------|------|------|
+| **可见性** | 修改 volatile 变量后，立即刷新到主内存，其他线程读取时从主内存拿最新值 | 一个线程修改 flag = true，另一个线程立刻能看到 |
+| **有序性** | 通过插入内存屏障，禁止 volatile 读写前后的指令被编译器或 CPU 重新排序 | 双重检查锁定单例模式必须用 volatile |
+
+**⚠️ 面试挖坑提醒**（这题面试经常挖坑）：「volatile 能保证原子性吗？」—— **不能！** 比如 `count++` 这个操作实际上是"读-改-写"三步，volatile 只能保证每次读到最新值，但多个线程同时 `count++` 仍然会出错。要保证原子性应该用 `AtomicInteger` 或 `synchronized`。
+
+**经典应用**：**双重检查锁定（DCL）单例模式**
+
+```java
+class Singleton {
+    private static volatile Singleton instance;
+    public static Singleton getInstance() {
+        if (instance == null) {                // 第一次检查
+            synchronized (Singleton.class) {
+                if (instance == null) {        // 第二次检查
+                    instance = new Singleton(); // volatile 防止这里指令重排序
+                }
+            }
+        }
+        return instance;
+    }
+}
+```
 
 ---
 
@@ -480,7 +480,7 @@ Order order = orderFuture.get();
 
 | 优先级 | 题目 |
 |--------|------|
-| **P0 高频必背** | 4. synchronized 原理、5. volatile、6. JMM、7. CAS、10. ThreadLocal、12. 线程池参数、14. 死锁 |
+| **P0 高频必背** | 4. JMM、5. CAS、6. synchronized 原理、7. volatile、10. ThreadLocal、12. 线程池参数、14. 死锁 |
 | **P1 中频建议掌握** | 1. 线程创建方式、3. sleep vs wait、8. 乐观悲观锁、9. ReentrantLock vs synchronized、11. 线程池好处、16. synchronized vs volatile、17. CompletableFuture |
 | **P2 低频了解即可** | 2. 线程状态、13. AQS、15. CountDownLatch/CyclicBarrier/Semaphore |
 
