@@ -100,7 +100,7 @@
 
 ### 5. Spring 怎么解决循环依赖？
 
-**一句话总结**：Spring 通过**三级缓存**解决 **setter 注入**的单例 Bean 循环依赖。构造器注入的循环依赖**无法解决**。
+**一句话总结**：Spring Framework 底层可以通过**三级缓存**解决 **setter 注入**的单例 Bean 循环依赖；但 **Spring Boot 2.6+/3.x 默认禁止循环依赖**，除非显式打开 `spring.main.allow-circular-references=true`。构造器注入的循环依赖**无法解决**。
 
 **三级缓存**：
 
@@ -151,7 +151,7 @@
 
 | # | 失效场景 | 原因 |
 |---|---------|------|
-| 1 | **方法不是 public** | Spring AOP 只能代理 public 方法 |
+| 1 | **接口代理下方法不是 public** | JDK 接口代理仍要求 `public`；Spring 6 的类代理对 `protected`/包可见方法已放宽，但面试里最稳妥仍写 `public` |
 | 2 | **同一个类中方法自调用** | 内部调用走的是 `this.method()`，不经过代理对象 |
 | 3 | **异常被 catch 吞掉了** | Spring 事务默认只在**抛出异常**时回滚，catch 了就不会回滚 |
 | 4 | **抛的是 checked 异常** | 默认只回滚 `RuntimeException` 和 `Error`，需要 `@Transactional(rollbackFor = Exception.class)` |
@@ -186,21 +186,21 @@
 
 ### 9. Spring Boot 的自动配置原理是什么？
 
-**一句话总结**：`@SpringBootApplication` 注解中的 `@EnableAutoConfiguration` 会读取 classpath 下所有 `META-INF/spring.factories` 文件中列出的自动配置类，再通过**条件注解**（`@ConditionalOnClass` 等）判断是否需要生效。
+**一句话总结**：`@SpringBootApplication` 注解中的 `@EnableAutoConfiguration` 会加载自动配置候选类，再通过**条件注解**（`@ConditionalOnClass` 等）判断是否生效。**Spring Boot 2.x** 常从 `META-INF/spring.factories` 读取候选类，**Spring Boot 3.x** 主流入口改为 `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`。
 
 **核心流程**：
 
 ```
 @SpringBootApplication
   └→ @EnableAutoConfiguration
-       └→ 读取 META-INF/spring.factories 中的自动配置类列表
+       └→ Boot 2.x 读取 `spring.factories`；Boot 3.x 主流读取 `AutoConfiguration.imports`
             └→ 每个配置类通过条件注解判断是否生效
                  ├── @ConditionalOnClass：classpath 中有某个类才生效
                  ├── @ConditionalOnMissingBean：容器中没有某个 Bean 才生效
                  └── @ConditionalOnProperty：配置文件中有某个属性才生效
 ```
 
-> **面试话术**：Spring Boot 自动配置的核心是 @EnableAutoConfiguration 注解。它通过 SpringFactoriesLoader 机制加载 spring.factories 文件中配置的所有自动配置类。这些配置类上有很多条件注解，比如 ConditionalOnClass 判断 classpath 里有没有某个类，ConditionalOnMissingBean 判断容器里有没有某个 Bean。只有条件满足时才会生效，这就是"约定大于配置"的体现。
+> **面试话术**：Spring Boot 自动配置的核心是 `@EnableAutoConfiguration`。它会先加载自动配置候选类，再通过条件注解筛选真正生效的配置。需要注意版本差异：Boot 2.x 常见入口是 `spring.factories`，Boot 3.x 主流入口改成了 `AutoConfiguration.imports`。条件满足才生效，这就是"约定大于配置"。
 
 ---
 
@@ -260,7 +260,7 @@
 |--------|--------|-------------|
 | 所属 | **Servlet** 规范 | **Spring MVC** 框架 |
 | 执行时机 | DispatcherServlet **之前** | DispatcherServlet **之后**，Controller 之前 |
-| 能否获取 Spring Bean | ❌ 不能（不在 Spring 上下文中） | ✅ 可以 |
+| 能否获取 Spring Bean | 视注册方式而定：原生 Servlet Filter 不依赖 Spring MVC；在 Spring Boot 中常可作为 Bean 注册 | ✅ 可以 |
 | 拦截范围 | **所有请求**（包括静态资源） | 只拦截**Controller 请求** |
 | 典型用途 | 字符编码、GZIP 压缩、安全防火墙 | 登录校验、权限检查、日志记录 |
 | 核心方法 | `doFilter()` | `preHandle()`、`postHandle()`、`afterCompletion()` |

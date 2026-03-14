@@ -10,17 +10,17 @@
 |--------|-----|-----|
 | 处理方式 | **预编译**（PreparedStatement 的 ?） | **字符串拼接**（直接替换） |
 | SQL 注入 | ✅ 安全 | ❌ 有风险 |
-| 使用场景 | **绝大多数场景** | 动态表名、列名、ORDER BY |
+| 使用场景 | **绝大多数场景** | 动态表名、列名、ORDER BY（必须先做白名单映射，绝不能直接拼接前端传入值） |
 
 ```sql
 -- #{} → 预编译：SELECT * FROM user WHERE id = ?
 SELECT * FROM user WHERE id = #{id}
 
--- ${} → 字符串拼接：SELECT * FROM user ORDER BY name
-SELECT * FROM user ORDER BY ${column}
+-- ${} 只能用于表名/列名这类标识符，且 safeColumn 必须来自服务端白名单
+SELECT * FROM user ORDER BY ${safeColumn}
 ```
 
-**背诵口诀**：「**#预编译防注入，$拼接不安全只用于表名列名**」
+**背诵口诀**：「**#预编译防注入，$只拼标识符且必须走白名单**」
 
 ---
 
@@ -74,7 +74,7 @@ XML：<mapper namespace="com.example.mapper.UserMapper">
 |------|------|--------|
 | 手写 LIMIT | 在 SQL 中直接写 `LIMIT #{offset}, #{size}` | 简单场景可以 |
 | **PageHelper 插件** | 通过 MyBatis **拦截器（Interceptor）**在 SQL 执行前自动加 LIMIT | ✅ **推荐** |
-| RowBounds | MyBatis 内置逻辑分页（内存分页，查出全部再截取） | ❌ 大数据量会 OOM |
+| RowBounds | MyBatis 内置逻辑分页（不会自动给 SQL 加 `LIMIT`，大数据量下性能差） | ❌ 不适合当真正的物理分页方案 |
 
 ---
 
@@ -95,7 +95,7 @@ XML：<mapper namespace="com.example.mapper.UserMapper">
 
 ### 7. MyBatis 的延迟加载是什么？怎么实现的？
 
-**一句话总结**：延迟加载（懒加载）就是**用到关联数据时才去查**，不用就不查。MyBatis 只支持 `association`（一对一）和 `collection`（一对多）的延迟加载，底层通过 **CGLIB 代理**实现。
+**一句话总结**：延迟加载（懒加载）就是**用到关联数据时才去查**，不用就不查。MyBatis 只支持 `association`（一对一）和 `collection`（一对多）的延迟加载，底层通过**代理对象**实现，当前默认代理工厂是 **JAVASSIST**。
 
 | 对比项 | 立即加载 | 延迟加载 |
 |--------|---------|---------|
@@ -104,7 +104,7 @@ XML：<mapper namespace="com.example.mapper.UserMapper">
 | 适用场景 | 关联数据一定会用到 | 关联数据不一定用到 |
 
 **实现原理**：
-1. MyBatis 用 **CGLIB** 为查询结果对象创建**代理对象**
+1. MyBatis 用**代理对象**包装查询结果，当前默认代理工厂是 **JAVASSIST**（`CGLIB` 属于旧可选实现）
 2. 访问关联属性时（如 `user.getOrders()`），代理对象拦截方法调用
 3. 发现关联数据还没加载（为 null），就**触发之前保存好的 SQL** 去查关联表
 4. 查回来后设置到对象属性上，返回结果

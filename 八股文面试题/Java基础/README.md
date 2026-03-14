@@ -53,11 +53,11 @@
 
 **⚠️ 面试挖坑提醒**：boolean 的大小问题！
 
-- **HotSpot JVM** 中，单个 `boolean` 变量底层用 `int` 存储，true 存为 **1**，false 存为 **0**，实际占 **4 字节**
+- **JVM 规范没有规定 boolean 的确切大小**。在 HotSpot JVM 中，单个 boolean **局部变量**在栈上按 int 槽位存储（true 存为 1，false 存为 0，占 4 字节的栈槽位）；但作为**对象字段**时，HotSpot 通常只分配 **1 字节**
 - `boolean` 数组中每个元素用 `byte` 存储，占 **1 字节**
 - JVM 规范没有明确规定 boolean 的大小，以上是 HotSpot 的实现
 
-> **面试话术**：Java 有 8 种基本数据类型。整数类型 4 种：byte、short、int、long，分别占 1、2、4、8 字节；浮点类型 2 种：float 和 double，分别占 4 和 8 字节；字符类型 char 占 2 字节，能存一个中文或一个英文字母；布尔类型 boolean，在 HotSpot JVM 中单独使用时底层用 int 存，占 4 字节。
+> **面试话术**：Java 有 8 种基本数据类型。整数类型 4 种：byte、short、int、long，分别占 1、2、4、8 字节；浮点类型 2 种：float 和 double，分别占 4 和 8 字节；字符类型 char 占 2 字节，能存一个中文或一个英文字母；布尔类型 boolean，JVM 规范没定死大小；HotSpot 中局部变量按 int 槽位占 4 字节，对象字段通常只占 1 字节。
 
 ---
 
